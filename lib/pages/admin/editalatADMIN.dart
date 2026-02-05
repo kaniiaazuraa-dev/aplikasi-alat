@@ -40,6 +40,12 @@ class _EditAlatADMINState extends State<EditAlatADMIN> {
     selectedKondisi = widget.kondisi;
   }
 
+  @override
+  void dispose() {
+    namaController.dispose();
+    super.dispose();
+  }
+
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery);
@@ -58,24 +64,25 @@ class _EditAlatADMINState extends State<EditAlatADMIN> {
       final fileName =
           '${widget.idAlat}_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-      await supabase.storage.from('alat').upload(fileName, selectedImage!);
+      // ✅ BUCKET DIBENARKAN
+      await supabase.storage
+          .from('alat.produk')
+          .upload(fileName, selectedImage!);
 
-      finalImageUrl = supabase.storage.from('alat').getPublicUrl(fileName);
+      finalImageUrl = supabase.storage
+          .from('alat.produk')
+          .getPublicUrl(fileName);
     }
 
-    await supabase
-        .from('alat')
-        .update({
-          'nama_alat': namaController.text,
-          'status': selectedStatus,
-          'kondisi': selectedKondisi,
-          'image_url': finalImageUrl,
-        })
-        .eq('id_alat', widget.idAlat);
+    await supabase.from('alat').update({
+      'nama_alat': namaController.text,
+      'status': selectedStatus,
+      'kondisi': selectedKondisi,
+      'image_url': finalImageUrl,
+    }).eq('id_alat', widget.idAlat);
 
     if (!mounted) return;
 
-    /// ⬇️ KIRIM DATA BALIK KE DAFTAR ALAT
     Navigator.pop(context, {
       'id_alat': widget.idAlat,
       'nama_alat': namaController.text,
@@ -99,7 +106,6 @@ class _EditAlatADMINState extends State<EditAlatADMIN> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ===== GAMBAR =====
             Container(
               height: 180,
               width: double.infinity,
@@ -111,25 +117,23 @@ class _EditAlatADMINState extends State<EditAlatADMIN> {
                 borderRadius: BorderRadius.circular(14),
                 child: GestureDetector(
                   onTap: _pickImage,
-                  child:
-                      selectedImage != null
-                          ? Image.file(selectedImage!, fit: BoxFit.cover)
-                          : widget.imageUrl.isNotEmpty
+                  child: selectedImage != null
+                      ? Image.file(selectedImage!, fit: BoxFit.cover)
+                      : widget.imageUrl.isNotEmpty
                           ? Image.network(widget.imageUrl, fit: BoxFit.cover)
                           : const Center(
-                            child: Icon(
-                              Icons.computer,
-                              size: 80,
-                              color: Colors.grey,
+                              child: Icon(
+                                Icons.computer,
+                                size: 80,
+                                color: Colors.grey,
+                              ),
                             ),
-                          ),
                 ),
               ),
             ),
 
             const SizedBox(height: 24),
 
-            // ===== NAMA ALAT =====
             const Text("Nama Alat"),
             const SizedBox(height: 6),
             TextField(
@@ -143,7 +147,6 @@ class _EditAlatADMINState extends State<EditAlatADMIN> {
 
             const SizedBox(height: 16),
 
-            // ===== STATUS =====
             const Text("Status"),
             const SizedBox(height: 6),
             DropdownButtonFormField<String>(
@@ -165,7 +168,6 @@ class _EditAlatADMINState extends State<EditAlatADMIN> {
 
             const SizedBox(height: 16),
 
-            // ===== KONDISI =====
             const Text("Kondisi"),
             const SizedBox(height: 6),
             DropdownButtonFormField<String>(
@@ -184,7 +186,6 @@ class _EditAlatADMINState extends State<EditAlatADMIN> {
 
             const SizedBox(height: 30),
 
-            // ===== BUTTON =====
             Row(
               children: [
                 Expanded(
