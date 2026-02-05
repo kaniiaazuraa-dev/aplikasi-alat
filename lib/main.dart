@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'auth/splash.dart';
 
-Future<void> main() async {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Supabase.initialize(
@@ -18,36 +19,9 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Peminjaman Alat',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const HomePage(),
-    );
-  }
-}
-
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final user = Supabase.instance.client.auth.currentUser;
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Supabase Connected')),
-      body: Center(
-        child:
-            user == null
-                ? const Text('Belum Login', style: TextStyle(fontSize: 18))
-                : Text(
-                  'Login sebagai: ${user.email}',
-                  style: const TextStyle(fontSize: 18),
-                ),
-      ),
+      home: SplashPage(), // ✅ SESUAI DENGAN splash.dart
     );
   }
 }
