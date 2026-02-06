@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart'; // untuk kIsWeb
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
@@ -7,7 +9,7 @@ class EditAlatADMIN extends StatefulWidget {
   final String idAlat;
   final String namaAlat;
   final String status;
-  final String kondisi;
+  final int stok;
   final String imageUrl;
 
   const EditAlatADMIN({
@@ -15,7 +17,7 @@ class EditAlatADMIN extends StatefulWidget {
     required this.idAlat,
     required this.namaAlat,
     required this.status,
-    required this.kondisi,
+    required this.stok,
     required this.imageUrl,
   });
 
@@ -27,22 +29,26 @@ class _EditAlatADMINState extends State<EditAlatADMIN> {
   final supabase = Supabase.instance.client;
 
   late TextEditingController namaController;
-  String selectedStatus = "Tersedia";
-  String selectedKondisi = "Baik";
+  late TextEditingController stokController;
 
-  File? selectedImage;
+  String selectedStatus = "Tersedia";
+  File? selectedImage; // untuk Mobile
+  Uint8List? webImage; // untuk Web
+
+  final String bucketName = 'alat.bucket'; // ✅ sesuaikan dengan bucket Supabase
 
   @override
   void initState() {
     super.initState();
     namaController = TextEditingController(text: widget.namaAlat);
+    stokController = TextEditingController(text: widget.stok.toString());
     selectedStatus = widget.status;
-    selectedKondisi = widget.kondisi;
   }
 
   @override
   void dispose() {
     namaController.dispose();
+    stokController.dispose();
     super.dispose();
   }
 
@@ -51,35 +57,55 @@ class _EditAlatADMINState extends State<EditAlatADMIN> {
     final picked = await picker.pickImage(source: ImageSource.gallery);
 
     if (picked != null) {
-      setState(() {
-        selectedImage = File(picked.path);
-      });
+      if (kIsWeb) {
+        final bytes = await picked.readAsBytes();
+        setState(() {
+          webImage = bytes;
+        });
+      } else {
+        setState(() {
+          selectedImage = File(picked.path);
+        });
+      }
     }
   }
 
   Future<void> _updateAlat() async {
-    String finalImageUrl = widget.imageUrl;
-
-    if (selectedImage != null) {
-      final fileName =
-          '${widget.idAlat}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-
-      // ✅ BUCKET DIBENARKAN
-      await supabase.storage
-          .from('alat.produk')
-          .upload(fileName, selectedImage!);
-
-      finalImageUrl = supabase.storage
-          .from('alat.produk')
-          .getPublicUrl(fileName);
+    if (namaController.text.isEmpty || stokController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Nama dan Stok tidak boleh kosong!")),
+      );
+      return;
     }
 
-    await supabase.from('alat').update({
-      'nama_alat': namaController.text,
-      'status': selectedStatus,
-      'kondisi': selectedKondisi,
-      'image_url': finalImageUrl,
-    }).eq('id_alat', widget.idAlat);
+    String finalImageUrl = widget.imageUrl;
+
+    // Upload image jika ada
+    if (selectedImage != null || webImage != null) {
+      final fileName =
+          '${widget.idAlat}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      if (kIsWeb && webImage != null) {
+        await supabase.storage
+            .from(bucketName)
+            .uploadBinary(fileName, webImage!);
+      } else if (selectedImage != null) {
+        await supabase.storage
+            .from(bucketName)
+            .upload(fileName, selectedImage!);
+      }
+      finalImageUrl = supabase.storage.from(bucketName).getPublicUrl(fileName);
+    }
+
+    // Update data di Supabase
+    await supabase
+        .from('alat')
+        .update({
+          'nama_alat': namaController.text,
+          'status': selectedStatus,
+          'stok': int.tryParse(stokController.text) ?? 0,
+          'image_url': finalImageUrl,
+        })
+        .eq('id_alat', widget.idAlat);
 
     if (!mounted) return;
 
@@ -87,13 +113,14 @@ class _EditAlatADMINState extends State<EditAlatADMIN> {
       'id_alat': widget.idAlat,
       'nama_alat': namaController.text,
       'status': selectedStatus,
-      'kondisi': selectedKondisi,
+      'stok': int.tryParse(stokController.text) ?? 0,
       'image_url': finalImageUrl,
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    const borderRadius = 14.0;
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -106,47 +133,65 @@ class _EditAlatADMINState extends State<EditAlatADMIN> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              height: 180,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: GestureDetector(
-                  onTap: _pickImage,
-                  child: selectedImage != null
-                      ? Image.file(selectedImage!, fit: BoxFit.cover)
-                      : widget.imageUrl.isNotEmpty
-                          ? Image.network(widget.imageUrl, fit: BoxFit.cover)
-                          : const Center(
-                              child: Icon(
-                                Icons.computer,
-                                size: 80,
-                                color: Colors.grey,
-                              ),
-                            ),
+            // IMAGE PICKER
+            GestureDetector(
+              onTap: _pickImage,
+              child: Container(
+                height: 180,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(borderRadius),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(borderRadius),
+                  child:
+                      kIsWeb
+                          ? (webImage != null
+                              ? Image.memory(webImage!, fit: BoxFit.cover)
+                              : widget.imageUrl.isNotEmpty
+                              ? Image.network(
+                                widget.imageUrl,
+                                fit: BoxFit.cover,
+                              )
+                              : const Center(
+                                child: Icon(
+                                  Icons.computer,
+                                  size: 80,
+                                  color: Colors.grey,
+                                ),
+                              ))
+                          : (selectedImage != null
+                              ? Image.file(selectedImage!, fit: BoxFit.cover)
+                              : widget.imageUrl.isNotEmpty
+                              ? Image.network(
+                                widget.imageUrl,
+                                fit: BoxFit.cover,
+                              )
+                              : const Center(
+                                child: Icon(
+                                  Icons.computer,
+                                  size: 80,
+                                  color: Colors.grey,
+                                ),
+                              )),
                 ),
               ),
             ),
 
             const SizedBox(height: 24),
-
             const Text("Nama Alat"),
             const SizedBox(height: 6),
             TextField(
               controller: namaController,
               decoration: InputDecoration(
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(borderRadius),
                 ),
               ),
             ),
 
             const SizedBox(height: 16),
-
             const Text("Status"),
             const SizedBox(height: 6),
             DropdownButtonFormField<String>(
@@ -161,31 +206,25 @@ class _EditAlatADMINState extends State<EditAlatADMIN> {
               onChanged: (v) => setState(() => selectedStatus = v!),
               decoration: InputDecoration(
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(borderRadius),
                 ),
               ),
             ),
 
             const SizedBox(height: 16),
-
-            const Text("Kondisi"),
+            const Text("Stok"),
             const SizedBox(height: 6),
-            DropdownButtonFormField<String>(
-              value: selectedKondisi,
-              items: const [
-                DropdownMenuItem(value: "Baik", child: Text("Baik")),
-                DropdownMenuItem(value: "Buruk", child: Text("Buruk")),
-              ],
-              onChanged: (v) => setState(() => selectedKondisi = v!),
+            TextField(
+              controller: stokController,
               decoration: InputDecoration(
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(borderRadius),
                 ),
               ),
+              keyboardType: TextInputType.number,
             ),
 
             const SizedBox(height: 30),
-
             Row(
               children: [
                 Expanded(

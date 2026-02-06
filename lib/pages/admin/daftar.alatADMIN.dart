@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'tambahalatADMIN.dart';
 import 'editalatADMIN.dart';
+import 'kelola_kategori_page.dart'; // <- pastikan import ini ditambahkan
 
 class DaftarAlatPage extends StatefulWidget {
   @override
@@ -88,7 +89,10 @@ class _DaftarAlatPageState extends State<DaftarAlatPage> {
                       _buildFilterChip("Semua", true),
                       _buildFilterChip("Hardware", false),
                       _buildFilterChip("Perlengkapan", false),
-                      _buildFilterChip("Kelola Kategori", false),
+                      _buildFilterChip(
+                        "Kelola Kategori",
+                        false,
+                      ), // <- perbaikan
                     ],
                   ),
                 ),
@@ -133,7 +137,7 @@ class _DaftarAlatPageState extends State<DaftarAlatPage> {
                             item['id_alat'].toString(),
                             item['nama_alat'] ?? "",
                             item['status'] ?? "Tersedia",
-                            item['kondisi'] ?? "",
+                            item['stok'] ?? 0,
                             item['image_url'] ?? "",
                           );
                         },
@@ -160,6 +164,7 @@ class _DaftarAlatPageState extends State<DaftarAlatPage> {
     );
   }
 
+  // ======= PERBAIKAN: Tambahkan onSelected untuk Kelola Kategori =======
   Widget _buildFilterChip(String label, bool isSelected) {
     return Container(
       margin: const EdgeInsets.only(right: 8),
@@ -171,6 +176,16 @@ class _DaftarAlatPageState extends State<DaftarAlatPage> {
           color: isSelected ? Colors.white : Colors.black,
           fontSize: 12,
         ),
+        onSelected: (value) {
+          if (label == "Kelola Kategori") {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const KelolaKategoriPage(),
+              ),
+            );
+          }
+        },
       ),
     );
   }
@@ -179,7 +194,7 @@ class _DaftarAlatPageState extends State<DaftarAlatPage> {
     String id,
     String nama,
     String status,
-    String kondisi,
+    int stok,
     String imageUrl,
   ) {
     return Container(
@@ -246,56 +261,51 @@ class _DaftarAlatPageState extends State<DaftarAlatPage> {
                   "Status : $status",
                   style: const TextStyle(color: Colors.white, fontSize: 10),
                 ),
+                Text(
+                  "Stok : $stok",
+                  style: const TextStyle(color: Colors.white, fontSize: 10),
+                ),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    Text(
-                      "Kondisi : $kondisi",
-                      style: const TextStyle(color: Colors.white, fontSize: 10),
-                    ),
-                    Row(
-                      children: [
-                        /// ✅ PERBAIKAN DI SINI (EDIT)
-                        GestureDetector(
-                          onTap: () async {
-                            final result = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder:
-                                    (context) => EditAlatADMIN(
-                                      idAlat: id,
-                                      namaAlat: nama,
-                                      status: status,
-                                      kondisi: kondisi,
-                                      imageUrl: imageUrl,
-                                    ),
-                              ),
-                            );
-
-                            if (result != null && mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text("Alat berhasil diperbarui"),
+                    GestureDetector(
+                      onTap: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder:
+                                (context) => EditAlatADMIN(
+                                  idAlat: id,
+                                  namaAlat: nama,
+                                  status: status,
+                                  stok: stok,
+                                  imageUrl: imageUrl,
                                 ),
-                              );
-                            }
-                          },
-                          child: const Icon(
-                            Icons.edit_note,
-                            color: Colors.white,
-                            size: 18,
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        GestureDetector(
-                          onTap: () => _deleteAlat(id),
-                          child: const Icon(
-                            Icons.delete_outline,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                      ],
+                        );
+
+                        if (result != null && mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Alat berhasil diperbarui"),
+                            ),
+                          );
+                        }
+                      },
+                      child: const Icon(
+                        Icons.edit_note,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    GestureDetector(
+                      onTap: () => _deleteAlat(id),
+                      child: const Icon(
+                        Icons.delete_outline,
+                        color: Colors.white,
+                        size: 18,
+                      ),
                     ),
                   ],
                 ),

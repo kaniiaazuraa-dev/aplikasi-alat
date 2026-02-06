@@ -14,9 +14,7 @@ class TambahAlatPage extends StatefulWidget {
 
 class _TambahAlatPageState extends State<TambahAlatPage> {
   final _nameController = TextEditingController();
-
-  // Variabel dropdown
-  String? _selectedKondisi;
+  final _stokController = TextEditingController();
   String? _selectedStatus;
 
   File? _imageFile;
@@ -48,14 +46,13 @@ class _TambahAlatPageState extends State<TambahAlatPage> {
   }
 
   Future<void> _simpanData() async {
-    // Validasi data: Stok tidak lagi divalidasi/diisi
     if (_nameController.text.isEmpty ||
-        _selectedKondisi == null ||
+        _stokController.text.isEmpty ||
         _selectedStatus == null ||
         (kIsWeb ? _webImage == null : _imageFile == null)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Harap isi semua data, status, dan foto!"),
+          content: Text("Harap isi semua data, status, stok, dan foto!"),
         ),
       );
       return;
@@ -66,7 +63,6 @@ class _TambahAlatPageState extends State<TambahAlatPage> {
     try {
       final supabase = Supabase.instance.client;
 
-      // 1. Upload Foto ke Storage
       final String fileExt = _fileName?.split('.').last ?? 'jpg';
       final String path =
           'alat_images/${DateTime.now().millisecondsSinceEpoch}.$fileExt';
@@ -82,14 +78,12 @@ class _TambahAlatPageState extends State<TambahAlatPage> {
           .from(bucketName)
           .getPublicUrl(path);
 
-      // 2. Simpan ke Database (TANPA KOLOM STOK)
       await supabase.from('alat').insert({
         'nama_alat': _nameController.text,
-        'kondisi': _selectedKondisi,
+        'stok': int.tryParse(_stokController.text) ?? 0,
         'status': _selectedStatus,
         'image_url': imageUrl,
         'kategori': 'Hardware',
-        // Kolom 'stok' dihapus dari sini sesuai permintaanmu
       });
 
       if (mounted) {
@@ -109,7 +103,6 @@ class _TambahAlatPageState extends State<TambahAlatPage> {
     }
   }
 
-  // --- UI Komponen Tetap Sama ---
   InputDecoration _inputStyle(String hint) {
     return InputDecoration(
       hintText: hint,
@@ -140,6 +133,8 @@ class _TambahAlatPageState extends State<TambahAlatPage> {
       fontWeight: FontWeight.bold,
     );
 
+    const statusItems = ["Tersedia", "Dipinjam", "Perbaikan"];
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
@@ -161,7 +156,6 @@ class _TambahAlatPageState extends State<TambahAlatPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Upload Box
                     GestureDetector(
                       onTap: _pickImage,
                       child: Container(
@@ -216,9 +210,12 @@ class _TambahAlatPageState extends State<TambahAlatPage> {
                       decoration: _cardDecoration(),
                       child: DropdownButtonFormField<String>(
                         decoration: _inputStyle("Pilih Status"),
-                        value: _selectedStatus,
+                        value:
+                            statusItems.contains(_selectedStatus)
+                                ? _selectedStatus
+                                : null,
                         items:
-                            ["Tersedia", "Dipinjam", "Perbaikan"]
+                            statusItems
                                 .map(
                                   (e) => DropdownMenuItem(
                                     value: e,
@@ -233,24 +230,14 @@ class _TambahAlatPageState extends State<TambahAlatPage> {
 
                     const SizedBox(height: 15),
 
-                    const Text("Kondisi", style: labelStyle),
+                    const Text("Stok", style: labelStyle),
                     const SizedBox(height: 8),
                     Container(
                       decoration: _cardDecoration(),
-                      child: DropdownButtonFormField<String>(
-                        decoration: _inputStyle("Pilih Kondisi"),
-                        value: _selectedKondisi,
-                        items:
-                            ["Baik", "Buruk"]
-                                .map(
-                                  (e) => DropdownMenuItem(
-                                    value: e,
-                                    child: Text(e),
-                                  ),
-                                )
-                                .toList(),
-                        onChanged:
-                            (val) => setState(() => _selectedKondisi = val),
+                      child: TextField(
+                        controller: _stokController,
+                        decoration: _inputStyle("Masukkan jumlah stok"),
+                        keyboardType: TextInputType.number,
                       ),
                     ),
 
