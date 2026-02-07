@@ -1,20 +1,44 @@
 import 'package:flutter/material.dart';
 
-
-class HomePetugasPage extends StatelessWidget {
-  const HomePetugasPage({super.key});
+// Buat halaman Settings dummy
+class SettingsPage extends StatelessWidget {
+  const SettingsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Dummy data
-    final pengajuanTerbaru = [
-      {'nama': 'Kania', 'alat': 'Komputer & Flashdisk', 'status': 'Menunggu'},
-      {'nama': 'Zura', 'alat': 'Keyboard', 'status': 'Menunggu'},
-      {'nama': 'Sari', 'alat': 'Kabel LAN', 'status': 'Menunggu'},
-      {'nama': 'Joni', 'alat': 'Komputer', 'status': 'Menunggu'},
-      {'nama': 'Sisil', 'alat': 'Stop Kontak', 'status': 'Menunggu'},
-    ];
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Settings'),
+        backgroundColor: const Color(0xFF000D33),
+      ),
+      body: const Center(
+        child: Text('Halaman Settings'),
+      ),
+    );
+  }
+}
 
+class HomePetugasPage extends StatefulWidget {
+  const HomePetugasPage({super.key});
+
+  @override
+  State<HomePetugasPage> createState() => _HomePetugasPageState();
+}
+
+class _HomePetugasPageState extends State<HomePetugasPage> {
+  int _currentIndex = 0;
+
+  // Dummy data
+  final pengajuanTerbaru = [
+    {'nama': 'Kania', 'alat': 'Komputer & Flashdisk', 'status': 'Menunggu'},
+    {'nama': 'Zura', 'alat': 'Keyboard', 'status': 'Menunggu'},
+    {'nama': 'Sari', 'alat': 'Kabel LAN', 'status': 'Menunggu'},
+    {'nama': 'Joni', 'alat': 'Komputer', 'status': 'Menunggu'},
+    {'nama': 'Sisil', 'alat': 'Stop Kontak', 'status': 'Menunggu'},
+  ];
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -91,7 +115,8 @@ class HomePetugasPage extends StatelessWidget {
                   children: const [
                     Padding(
                       padding: EdgeInsets.all(8.0),
-                      child: Text('Nama Peminjam', style: TextStyle(fontWeight: FontWeight.bold)),
+                      child:
+                          Text('Nama Peminjam', style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                     Padding(
                       padding: EdgeInsets.all(8.0),
@@ -138,8 +163,21 @@ class HomePetugasPage extends StatelessWidget {
 
       // ===== BOTTOM NAV BAR =====
       bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
         selectedItemColor: const Color(0xFF000D33),
         unselectedItemColor: Colors.grey,
+        onTap: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+          if (index == 3) {
+            // kalau klik Settings, buka halaman Settings
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SettingsPage()),
+            );
+          }
+        },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: ''),
           BottomNavigationBarItem(icon: Icon(Icons.inventory), label: ''),
