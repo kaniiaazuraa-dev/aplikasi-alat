@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 import '../../models/alat.models.dart';
 
-class FormPeminjamanPage extends StatefulWidget {
+// Model sementara untuk keranjang
+class AlatPinjam {
   final AlatModel alat;
+  int jumlah;
 
-  const FormPeminjamanPage({super.key, required this.alat});
+  AlatPinjam({required this.alat, this.jumlah = 1});
+}
+
+class FormPeminjamanPage extends StatefulWidget {
+  final AlatModel? alat; // bisa null karena keranjang multi-alat
+
+  const FormPeminjamanPage({super.key, this.alat});
 
   @override
   State<FormPeminjamanPage> createState() => _FormPeminjamanPageState();
@@ -12,10 +20,22 @@ class FormPeminjamanPage extends StatefulWidget {
 
 class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
   final _formKey = GlobalKey<FormState>();
-
   DateTime? tanggalPinjam;
   DateTime? tanggalKembali;
   final TextEditingController catatanC = TextEditingController();
+  final TextEditingController namaC = TextEditingController();
+
+  // Keranjang multi-alat
+  List<AlatPinjam> keranjang = [];
+
+  @override
+  void initState() {
+    super.initState();
+    // jika ada alat default, tambahkan ke keranjang
+    if (widget.alat != null) {
+      keranjang.add(AlatPinjam(alat: widget.alat!));
+    }
+  }
 
   Future<void> _pickDate(bool isPinjam) async {
     final date = await showDatePicker(
@@ -26,6 +46,12 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
     );
 
     if (date != null) {
+      if (!isPinjam && tanggalPinjam != null && date.isBefore(tanggalPinjam!)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tanggal kembali harus setelah tanggal pinjam')),
+        );
+        return;
+      }
       setState(() {
         if (isPinjam) {
           tanggalPinjam = date;
@@ -36,11 +62,19 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
     }
   }
 
+  void tambahKeKeranjang(AlatModel alat) {
+    final index = keranjang.indexWhere((e) => e.alat.idAlat == alat.idAlat);
+    if (index >= 0) {
+      setState(() => keranjang[index].jumlah++);
+    } else {
+      setState(() => keranjang.add(AlatPinjam(alat: alat)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
-
       appBar: AppBar(
         backgroundColor: const Color(0xFF0B1C3D),
         title: const Text(
@@ -49,20 +83,33 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
         ),
         leading: const BackButton(color: Colors.white),
       ),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _alatCard(),
+              _inputField(controller: namaC, label: 'Nama Peminjam', hint: 'Masukkan Nama Peminjam'),
+              const SizedBox(height: 16),
+              _dateField(label: 'Tanggal Peminjaman', value: tanggalPinjam, onTap: () => _pickDate(true)),
+              const SizedBox(height: 16),
+              _dateField(label: 'Tanggal Pengembalian', value: tanggalKembali, onTap: () => _pickDate(false)),
               const SizedBox(height: 20),
-              _tanggalSection(),
-              const SizedBox(height: 20),
-              _catatanField(),
+              const Text('Keranjang Peminjaman', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              _addCartButton(),
+              const SizedBox(height: 10),
+              // Tampilkan semua alat di keranjang
+              ...keranjang.map((item) => _alatCard(item)).toList(),
               const SizedBox(height: 30),
-              _submitButton(),
+              Row(
+                children: [
+                  Expanded(child: _cancelButton()),
+                  const SizedBox(width: 16),
+                  Expanded(child: _submitButton()),
+                ],
+              )
             ],
           ),
         ),
@@ -70,174 +117,175 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
     );
   }
 
-  // ================= CARD ALAT (FIGMA STYLE) =================
-  Widget _alatCard() {
+  // ================= INPUT FIELD =================
+  Widget _inputField({required TextEditingController controller, required String label, required String hint}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+        const SizedBox(height: 6),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))],
+          ),
+          child: TextFormField(
+            controller: controller,
+            decoration: InputDecoration(
+              hintText: hint,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ================= DATE FIELD =================
+  Widget _dateField({required String label, required DateTime? value, required VoidCallback onTap}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+        const SizedBox(height: 6),
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  value == null ? 'Masukkan $label' : '${value.day}-${value.month}-${value.year}',
+                  style: TextStyle(color: value == null ? Colors.grey.shade500 : Colors.black),
+                ),
+                const Icon(Icons.calendar_month, size: 20, color: Colors.grey),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ================= ADD CART BUTTON =================
+  Widget _addCartButton() {
+    return GestureDetector(
+      onTap: () {
+        // TODO: Ganti dengan navigasi ke halaman pilih alat
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Fitur pilih alat akan ditambahkan di sini')),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0B1C3D),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        alignment: Alignment.center,
+        child: const Text('+ Tambah Keranjang', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
+  // ================= CARD ALAT =================
+  Widget _alatCard(AlatPinjam item) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6, offset: const Offset(0, 3))],
       ),
       child: Row(
         children: [
-          // GAMBAR ALAT
-          Container(
-            width: 70,
-            height: 70,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade200,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Image.asset(
-              'assets/images/alat_default.png',
-              fit: BoxFit.contain,
-            ),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: item.alat.image_url != null && item.alat.image_url!.isNotEmpty
+                ? Image.network(item.alat.image_url!, width: 60, height: 60, fit: BoxFit.cover)
+                : Image.asset('assets/images/alat_default.png', width: 60, height: 60, fit: BoxFit.cover),
           ),
-
-          const SizedBox(width: 14),
-
-          // INFO ALAT
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  widget.alat.namaAlat,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  widget.alat.kategori,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
+                Text(item.alat.namaAlat, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                 const SizedBox(height: 4),
-                Text(
-                  'Kondisi: ${widget.alat.kondisi}',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
+                const Text('Status: Tersedia', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 2),
+                const Text('Kondisi: Baik', style: TextStyle(fontSize: 12, color: Colors.grey)),
               ],
             ),
           ),
+          Row(
+            children: [
+              _countButton('-', onTap: () {
+                if (item.jumlah > 1) setState(() => item.jumlah--);
+              }),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: Text('${item.jumlah}', style: const TextStyle(fontWeight: FontWeight.bold)),
+              ),
+              _countButton('+', onTap: () => setState(() => item.jumlah++)),
+            ],
+          )
         ],
       ),
     );
   }
 
-  // ================= TANGGAL =================
-  Widget _tanggalSection() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Tanggal Peminjaman',
-            style: TextStyle(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 12),
-
-          _dateTile(
-            label: 'Tanggal Pinjam',
-            value: tanggalPinjam,
-            onTap: () => _pickDate(true),
-          ),
-          const SizedBox(height: 12),
-          _dateTile(
-            label: 'Tanggal Kembali',
-            value: tanggalKembali,
-            onTap: () => _pickDate(false),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _dateTile({
-    required String label,
-    required DateTime? value,
-    required VoidCallback onTap,
-  }) {
+  Widget _countButton(String text, {required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        width: 28,
+        height: 28,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.shade300),
+          color: const Color(0xFFEFEFEF),
+          borderRadius: BorderRadius.circular(8),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              value == null
-                  ? label
-                  : '${value.day}-${value.month}-${value.year}',
-              style: const TextStyle(fontSize: 13),
-            ),
-            const Icon(Icons.calendar_month, size: 18),
-          ],
-        ),
+        alignment: Alignment.center,
+        child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
       ),
     );
   }
 
-  // ================= CATATAN =================
-  Widget _catatanField() {
+  // ================= CANCEL & SUBMIT =================
+  Widget _cancelButton() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      height: 48,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
       ),
-      child: TextFormField(
-        controller: catatanC,
-        maxLines: 3,
-        decoration: InputDecoration(
-          hintText: 'Catatan (opsional)',
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-        ),
-      ),
+      alignment: Alignment.center,
+      child: const Text('Batal', style: TextStyle(fontWeight: FontWeight.bold)),
     );
   }
 
-  // ================= SUBMIT =================
   Widget _submitButton() {
-    return SizedBox(
-      width: double.infinity,
+    return Container(
       height: 48,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF0B1C3D),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        onPressed: () {
-          if (_formKey.currentState!.validate()) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('Pengajuan dikirim')));
-          }
-        },
-        child: const Text(
-          'Ajukan Peminjaman',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0B1C3D),
+        borderRadius: BorderRadius.circular(12),
       ),
+      alignment: Alignment.center,
+      child: const Text('Ajukan Peminjaman', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
     );
   }
 }
