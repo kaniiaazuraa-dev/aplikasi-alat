@@ -79,21 +79,28 @@ class _AjukanPeminjamanPageState extends State<AjukanPeminjamanPage> {
       ),
       child: Column(
         children: [
+          // ================= GAMBAR =================
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(8),
-              child: Image.asset(
-                'assets/images/alat_default.png',
-                fit: BoxFit.contain,
-              ),
+              child: alat.image_url != null && alat.image_url!.isNotEmpty
+                  ? Image.network(
+                      alat.image_url!,
+                      fit: BoxFit.contain,
+                    )
+                  : const Icon(Icons.image, size: 60),
             ),
           ),
+
+          // ================= INFO ALAT =================
           Container(
             padding: const EdgeInsets.all(8),
             width: double.infinity,
             decoration: const BoxDecoration(
               color: Color(0xFF000D33),
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
+              borderRadius: BorderRadius.vertical(
+                bottom: Radius.circular(12),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -110,24 +117,22 @@ class _AjukanPeminjamanPageState extends State<AjukanPeminjamanPage> {
                   style: const TextStyle(color: Colors.white, fontSize: 12),
                 ),
                 Text(
-                  'Kondisi: ${alat.kondisi}',
+                  'Stok: ${alat.stok}',
                   style: const TextStyle(color: Colors.white, fontSize: 12),
                 ),
                 Align(
                   alignment: Alignment.centerRight,
                   child: IconButton(
                     icon: const Icon(Icons.add_circle, color: Colors.white),
-
-                    // ================== INI YANG DIPERBAIKI ==================
                     onPressed: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => FormPeminjamanPage(alat: alat),
+                          builder: (_) =>
+                              FormPeminjamanPage(alat: alat),
                         ),
                       );
                     },
-                    // ==========================================================
                   ),
                 ),
               ],
