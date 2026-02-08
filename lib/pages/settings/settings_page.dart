@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../auth/login.dart';
+import '../admin/daftar_user_page.dart';
 
 class SettingsPage extends StatelessWidget {
   SettingsPage({super.key});
@@ -23,9 +24,6 @@ class SettingsPage extends StatelessWidget {
             .toString()
             .trim()
             .toLowerCase());
-    print('ROLE LOGIN: $role');
-    print('USER METADATA: ${user?.userMetadata}');
-    print('APP METADATA: ${user?.appMetadata}');
 
     // ================= MENU PER ROLE =================
     final List<Map<String, dynamic>> menuAdmin = [
@@ -33,7 +31,12 @@ class SettingsPage extends StatelessWidget {
       {
         'icon': Icons.manage_accounts_outlined,
         'title': 'Manajemen Akun',
-        'onTap': () {},
+        'onTap': () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const DaftarUserPage()),
+          );
+        },
       },
       {'icon': Icons.lock_outline, 'title': 'Ubah Password', 'onTap': () {}},
       {'icon': Icons.info_outline, 'title': 'Tentang Aplikasi', 'onTap': () {}},
