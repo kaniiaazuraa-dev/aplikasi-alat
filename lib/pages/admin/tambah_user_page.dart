@@ -20,14 +20,17 @@ class _TambahUserPageState extends State<TambahUserPage> {
 
   // ================= SIMPAN DATA =================
   Future<void> _simpanData() async {
-    if (_nameController.text.isEmpty ||
-        _emailController.text.isEmpty ||
-        _selectedRole == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Harap isi semua data!"),
-        ),
-      );
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+
+    if (name.isEmpty || email.isEmpty || _selectedRole == null) {
+      _showSnackBar("Harap isi semua data!");
+      return;
+    }
+
+    // Validasi email sangat sederhana (bisa diganti regex kalau mau lebih ketat)
+    if (!email.contains('@') || !email.contains('.') || email.length < 6) {
+      _showSnackBar("Format email sepertinya tidak valid");
       return;
     }
 
@@ -36,27 +39,65 @@ class _TambahUserPageState extends State<TambahUserPage> {
     try {
       final supabase = Supabase.instance.client;
 
+      // Cek duplikat email – pakai trim juga di query
+      final existing =
+          await supabase
+              .from('users')
+              .select('email')
+              .eq('email', email) // sudah trim di atas
+              .maybeSingle(); // ← ini yang benar!
+
+      if (existing != null) {
+        _showSnackBar("Email sudah terdaftar!");
+        return;
+      }
+
       await supabase.from('users').insert({
-        'nama_lengkap': _nameController.text.trim(),
-        'email': _emailController.text.trim(),
+        'nama_lengkap': name,
+        'email': email,
         'role': _selectedRole,
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("User berhasil ditambahkan!")),
-        );
-        Navigator.pop(context, true); // kembali ke halaman daftar user
+        _showSnackBar("User berhasil ditambahkan!");
+        FocusScope.of(context).unfocus(); // keyboard hilang
+        Navigator.pop(context, true);
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Gagal menambahkan user: $e")),
-        );
+      String message = "Gagal menambahkan user";
+
+      if (e is PostgrestException) {
+        switch (e.code) {
+          case '23505': // unique_violation
+            message = "Email sudah terdaftar";
+            break;
+          case '42501':
+            message = "Tidak memiliki izin untuk menambah user";
+            break;
+          default:
+            message = "Kesalahan server: ${e.message}";
+        }
+      } else if (e.toString().toLowerCase().contains("timeout")) {
+        message = "Koneksi lambat, coba lagi nanti";
       }
+
+      _showSnackBar(message);
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
+  }
+
+  // Helper supaya kode lebih bersih & aman
+  void _showSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).hideCurrentSnackBar(); // hindari numpuk snackbar
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
+    );
   }
 
   InputDecoration _inputStyle(String hint) {
@@ -102,95 +143,99 @@ class _TambahUserPageState extends State<TambahUserPage> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("Nama Lengkap", style: labelStyle),
-                  const SizedBox(height: 8),
-                  Container(
-                    decoration: _cardDecoration(),
-                    child: TextField(
-                      controller: _nameController,
-                      decoration: _inputStyle("Masukkan Nama Lengkap"),
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Nama Lengkap", style: labelStyle),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: _cardDecoration(),
+                      child: TextField(
+                        controller: _nameController,
+                        decoration: _inputStyle("Masukkan Nama Lengkap"),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 15),
-                  const Text("Email", style: labelStyle),
-                  const SizedBox(height: 8),
-                  Container(
-                    decoration: _cardDecoration(),
-                    child: TextField(
-                      controller: _emailController,
-                      decoration: _inputStyle("Masukkan Email"),
-                      keyboardType: TextInputType.emailAddress,
+                    const SizedBox(height: 15),
+                    const Text("Email", style: labelStyle),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: _cardDecoration(),
+                      child: TextField(
+                        controller: _emailController,
+                        decoration: _inputStyle("Masukkan Email"),
+                        keyboardType: TextInputType.emailAddress,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 15),
-                  const Text("Role", style: labelStyle),
-                  const SizedBox(height: 8),
-                  Container(
-                    decoration: _cardDecoration(),
-                    child: DropdownButtonFormField<String>(
-                      decoration: _inputStyle("Pilih Role"),
-                      value: roleItems.contains(_selectedRole)
-                          ? _selectedRole
-                          : null,
-                      items: roleItems
-                          .map(
-                            (e) => DropdownMenuItem(
-                              value: e,
-                              child: Text(e),
+                    const SizedBox(height: 15),
+                    const Text("Role", style: labelStyle),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: _cardDecoration(),
+                      child: DropdownButtonFormField<String>(
+                        decoration: _inputStyle("Pilih Role"),
+                        value:
+                            roleItems.contains(_selectedRole)
+                                ? _selectedRole
+                                : null,
+                        items:
+                            roleItems
+                                .map(
+                                  (e) => DropdownMenuItem(
+                                    value: e,
+                                    child: Text(e),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged:
+                            (value) => setState(() => _selectedRole = value),
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 15),
+                              side: BorderSide(color: navyColor),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
-                          )
-                          .toList(),
-                      onChanged: (value) => setState(() => _selectedRole = value),
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 15),
-                            side: BorderSide(color: navyColor),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                            child: Text(
+                              "Batal",
+                              style: TextStyle(color: navyColor),
                             ),
-                          ),
-                          child: Text(
-                            "Batal",
-                            style: TextStyle(color: navyColor),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 15),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: _simpanData,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: navyColor,
-                            padding: const EdgeInsets.symmetric(vertical: 15),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: _simpanData,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: navyColor,
+                              padding: const EdgeInsets.symmetric(vertical: 15),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text(
+                              "Tambah",
+                              style: TextStyle(color: Colors.white),
                             ),
                           ),
-                          child: const Text(
-                            "Tambah",
-                            style: TextStyle(color: Colors.white),
-                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
     );
   }
 }

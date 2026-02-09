@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../admin/tambah_user_page.dart';
 
 class DaftarUserPage extends StatefulWidget {
   const DaftarUserPage({super.key});
@@ -55,7 +56,16 @@ class _DaftarUserPageState extends State<DaftarUserPage> {
       // ================= FAB =================
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF020B4F),
-        onPressed: () {},
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const TambahUserPage()),
+          );
+
+          if (result == true) {
+            fetchUsers(); // refresh list user
+          }
+        },
         child: const Icon(Icons.add, color: Colors.white),
       ),
 
