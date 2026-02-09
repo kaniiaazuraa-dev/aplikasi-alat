@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/alat.models.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 // Model sementara untuk keranjang
 class AlatPinjam {
@@ -8,6 +9,25 @@ class AlatPinjam {
 
   AlatPinjam({required this.alat, this.jumlah = 1});
 }
+
+// Model sementara untuk keranjang
+class AlatPinjam {
+  final AlatModel alat;
+  int jumlah;
+
+  AlatPinjam({required this.alat, this.jumlah = 1});
+}
+
+// Model sementara untuk keranjang
+class AlatPinjam {
+  final AlatModel alat;
+  int jumlah;
+
+  AlatPinjam({required this.alat, this.jumlah = 1});
+}
+
+class FormPeminjamanPage extends StatefulWidget {
+  final AlatModel? alat; // bisa null karena keranjang multi-alat
 
 class FormPeminjamanPage extends StatefulWidget {
   final AlatModel? alat; // bisa null karena keranjang multi-alat
@@ -49,6 +69,13 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
       if (!isPinjam && tanggalPinjam != null && date.isBefore(tanggalPinjam!)) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Tanggal kembali harus setelah tanggal pinjam')),
+HEAD
+          const SnackBar(content: Text('Tanggal kembali harus setelah tanggal pinjam')),
+=======
+          const SnackBar(
+            content: Text('Tanggal kembali harus setelah tanggal pinjam'),
+          ),
+          7f7b701e3fa98a10442c061ac2409681a6192bb4
         );
         return;
       }
@@ -101,6 +128,31 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
               _addCartButton(),
               const SizedBox(height: 10),
               // Tampilkan semua alat di keranjang
+              _inputField(
+                controller: namaC,
+                label: 'Nama Peminjam',
+                hint: 'Masukkan Nama Peminjam',
+              ),
+              const SizedBox(height: 16),
+              _dateField(
+                label: 'Tanggal Peminjaman',
+                value: tanggalPinjam,
+                onTap: () => _pickDate(true),
+              ),
+              const SizedBox(height: 16),
+              _dateField(
+                label: 'Tanggal Pengembalian',
+                value: tanggalKembali,
+                onTap: () => _pickDate(false),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Keranjang Peminjaman',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              _addCartButton(),
+              const SizedBox(height: 10),
               ...keranjang.map((item) => _alatCard(item)).toList(),
               const SizedBox(height: 30),
               Row(
@@ -110,6 +162,7 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
                   Expanded(child: _submitButton()),
                 ],
               )
+              ),
             ],
           ),
         ),
@@ -123,18 +176,41 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+  Widget _inputField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        ),
         const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(10),
             boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))],
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: TextFormField(
             controller: controller,
             decoration: InputDecoration(
               hintText: hint,
               contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 14,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide.none,
@@ -152,6 +228,18 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+  Widget _dateField({
+    required String label,
+    required DateTime? value,
+    required VoidCallback onTap,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        ),
         const SizedBox(height: 6),
         GestureDetector(
           onTap: onTap,
@@ -161,6 +249,13 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(10),
               boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))],
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -168,6 +263,12 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
                 Text(
                   value == null ? 'Masukkan $label' : '${value.day}-${value.month}-${value.year}',
                   style: TextStyle(color: value == null ? Colors.grey.shade500 : Colors.black),
+                  value == null
+                      ? 'Masukkan $label'
+                      : '${value.day}-${value.month}-${value.year}',
+                  style: TextStyle(
+                    color: value == null ? Colors.grey.shade500 : Colors.black,
+                  ),
                 ),
                 const Icon(Icons.calendar_month, size: 20, color: Colors.grey),
               ],
@@ -185,6 +286,10 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
         // TODO: Ganti dengan navigasi ke halaman pilih alat
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Fitur pilih alat akan ditambahkan di sini')),
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Fitur pilih alat akan ditambahkan di sini'),
+          ),
         );
       },
       child: Container(
@@ -195,6 +300,10 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
         ),
         alignment: Alignment.center,
         child: const Text('+ Tambah Keranjang', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        child: const Text(
+          '+ Tambah Keranjang',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }
@@ -208,6 +317,13 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6, offset: const Offset(0, 3))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -216,6 +332,20 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
             child: item.alat.image_url != null && item.alat.image_url!.isNotEmpty
                 ? Image.network(item.alat.image_url!, width: 60, height: 60, fit: BoxFit.cover)
                 : Image.asset('assets/images/alat_default.png', width: 60, height: 60, fit: BoxFit.cover),
+            child:
+                item.alat.image_url != null && item.alat.image_url!.isNotEmpty
+                    ? Image.network(
+                      item.alat.image_url!,
+                      width: 60,
+                      height: 60,
+                      fit: BoxFit.cover,
+                    )
+                    : Image.asset(
+                      'assets/images/alat_default.png',
+                      width: 60,
+                      height: 60,
+                      fit: BoxFit.cover,
+                    ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -227,6 +357,27 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
                 const Text('Status: Tersedia', style: TextStyle(fontSize: 12, color: Colors.grey)),
                 const SizedBox(height: 2),
                 const Text('Kondisi: Baik', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 4),
+                const Text('Status: Tersedia', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 2),
+                const Text('Kondisi: Baik', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                Text(
+                  item.alat.namaAlat,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Status: Tersedia',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  'Kondisi: Baik',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
               ],
             ),
           ),
@@ -242,6 +393,22 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
               _countButton('+', onTap: () => setState(() => item.jumlah++)),
             ],
           )
+              _countButton(
+                '-',
+                onTap: () {
+                  if (item.jumlah > 1) setState(() => item.jumlah--);
+                },
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: Text(
+                  '${item.jumlah}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              _countButton('+', onTap: () => setState(() => item.jumlah++)),
+            ],
+          ),
         ],
       ),
     );
@@ -283,6 +450,54 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
       decoration: BoxDecoration(
         color: const Color(0xFF0B1C3D),
         borderRadius: BorderRadius.circular(12),
+      ),
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF0B1C3D),
+        minimumSize: const Size.fromHeight(48),
+      ),
+      onPressed: () async {
+        // Validasi tanggal
+        if (tanggalPinjam == null || tanggalKembali == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Isi tanggal pinjam dan kembali terlebih dahulu'),
+            ),
+          );
+          return;
+        }
+
+        final user = Supabase.instance.client.auth.currentUser;
+        if (user == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Silakan login terlebih dahulu')),
+          );
+          return;
+        }
+
+        try {
+          await Supabase.instance.client.from('peminjaman').insert({
+            'id_user': user.id,
+            'tanggal_pinjam': tanggalPinjam!.toIso8601String(),
+            'tanggal_kembali_rencana': tanggalKembali!.toIso8601String(),
+            'status': 'menunggu',
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Peminjaman berhasil diajukan!')),
+          );
+
+          Navigator.pop(context); // kembali ke halaman sebelumnya
+        } catch (e) {
+          print('Error insert peminjaman: $e'); // lihat error di console
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Gagal mengajukan peminjaman: $e')),
+          );
+        }
+      },
+      child: const Text(
+        'Ajukan Peminjaman',
+        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
       ),
       alignment: Alignment.center,
       child: const Text('Ajukan Peminjaman', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
