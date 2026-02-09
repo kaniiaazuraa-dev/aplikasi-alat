@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../admin/tambah_user_page.dart';
+import '../admin/edit_user_page.dart';
 
 class DaftarUserPage extends StatefulWidget {
   const DaftarUserPage({super.key});
@@ -21,12 +22,57 @@ class _DaftarUserPageState extends State<DaftarUserPage> {
     fetchUsers();
   }
 
+  // ================= DELETE USER =================
+  Future<void> _deleteUser(String userId) async {
+    try {
+      await supabase.from('users').delete().eq('id', userId);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('User berhasil dihapus')));
+
+      fetchUsers(); // refresh list
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Gagal menghapus user')));
+    }
+  }
+
+  void _confirmDelete(String userId, String nama) {
+    showDialog(
+      context: context,
+      builder:
+          (_) => AlertDialog(
+            title: const Text('Hapus User'),
+            content: Text('Yakin ingin menghapus user "$nama"?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Batal'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                onPressed: () {
+                  Navigator.pop(context);
+                  _deleteUser(userId);
+                },
+                child: const Text('Hapus'),
+              ),
+            ],
+          ),
+    );
+  }
+
   // ================= FETCH USERS =================
   Future<void> fetchUsers() async {
     try {
       final data = await supabase
           .from('users')
-          .select('nama_lengkap, email, role')
+          .select('id, nama_lengkap, email, role')
           .order('nama_lengkap', ascending: true);
 
       setState(() {
@@ -155,9 +201,28 @@ class _DaftarUserPageState extends State<DaftarUserPage> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _actionButton('Edit', () {}),
+                _actionButton('Edit', () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (_) => EditUserPage(
+                            userId: user['id'],
+                            nama: user['nama_lengkap'],
+                            email: user['email'],
+                            role: user['role'],
+                          ),
+                    ),
+                  ).then((value) {
+                    if (value == true) {
+                      fetchUsers(); // refresh setelah edit
+                    }
+                  });
+                }),
                 const SizedBox(width: 8),
-                _actionButton('Hapus', () {}),
+                _actionButton('Hapus', () {
+                  _confirmDelete(user['id'], user['nama_lengkap'] ?? '');
+                }),
               ],
             ),
           ),
