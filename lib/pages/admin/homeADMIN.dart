@@ -2,7 +2,6 @@ import 'package:aplikasi_alat/pages/admin/Monitoring_peminjaman_page.dart';
 import 'package:flutter/material.dart';
 import 'daftar.alatADMIN.dart';
 import '../settings/settings_page.dart';
-// ignore: duplicate_import
 import '../admin/Monitoring_peminjaman_page.dart'; // ✅ TAMBAHAN
 
 class HomeADMIN extends StatefulWidget {

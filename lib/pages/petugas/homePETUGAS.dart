@@ -1,20 +1,12 @@
 import 'package:flutter/material.dart';
 import 'halaman_persetujuan_page.dart';
 import 'halaman_pengembalian_page.dart';
-import '../settings/settings_page.dart';
+import '../settings/settings_page.dart'; 
 
-// Buat halaman Settings dummy
+
+// Dummy SettingsPage
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
-class HomePetugasPage extends StatefulWidget {
-  const HomePetugasPage({super.key});
-
-  @override
-  State<HomePetugasPage> createState() => _HomePetugasPageState();
-}
-
-class _HomePetugasPageState extends State<HomePetugasPage> {
-  int _selectedIndex = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -29,12 +21,8 @@ class _HomePetugasPageState extends State<HomePetugasPage> {
     );
   }
 }
-    final pengajuanTerbaru = [
-      {'nama': 'Kania', 'alat': 'Komputer', 'status': 'menunggu'},
-      {'nama': 'Zura', 'alat': 'Keyboard', 'status': 'menunggu'},
-      {'nama': 'Sari', 'alat': 'Kabel LAN', 'status': 'menunggu'},
-    ];
 
+// Main HomePetugasPage
 class HomePetugasPage extends StatefulWidget {
   const HomePetugasPage({super.key});
 
@@ -43,9 +31,8 @@ class HomePetugasPage extends StatefulWidget {
 }
 
 class _HomePetugasPageState extends State<HomePetugasPage> {
-  int _currentIndex = 0;
+  int _selectedIndex = 0;
 
-  // Dummy data
   final pengajuanTerbaru = [
     {'nama': 'Kania', 'alat': 'Komputer & Flashdisk', 'status': 'Menunggu'},
     {'nama': 'Zura', 'alat': 'Keyboard', 'status': 'Menunggu'},
@@ -57,124 +44,11 @@ class _HomePetugasPageState extends State<HomePetugasPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-
-            // ===== TABLE =====
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Pengajuan Peminjaman Terbaru',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Table(
-              border: TableBorder.all(color: Colors.grey.shade300),
-              columnWidths: const {
-                0: FlexColumnWidth(2),
-                1: FlexColumnWidth(3),
-                2: FlexColumnWidth(2),
-              },
-              children: [
-                TableRow(
-                  decoration: BoxDecoration(color: Colors.grey.shade200),
-                  children: const [
-                    Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child:
-                          Text('Nama Peminjam', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: Text('Alat', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: Text('Status', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ),
-                ...pengajuanTerbaru.map((item) => TableRow(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Text(item['nama']!),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Text(item['alat']!),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.yellow.shade600,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              item['status']!,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(color: Colors.black),
-                            ),
-                          ),
-                        ),
-                      ],
-                    )),
-              ],
-            ),
-          ],
-        ),
-      ),
-
-      // ===== BOTTOM NAV BAR =====
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        selectedItemColor: const Color(0xFF000D33),
-        unselectedItemColor: Colors.grey,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-          if (index == 3) {
-            // kalau klik Settings, buka halaman Settings
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const SettingsPage()),
-            );
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: ''),
-          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: ''),
-          BottomNavigationBarItem(icon: Icon(Icons.assignment), label: ''),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: ''),
-        ],
-      ),
-    );
-  }
-
-  // ===== CARD WIDGET =====
-  Widget _infoCard(String title, String value, {bool isRed = false}) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF000D33)),
-        color: Colors.white,
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 3, offset: Offset(0, 2))
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      // ================= BODY =================
       body: IndexedStack(
         index: _selectedIndex,
         children: [
-          // ===== DASHBOARD (ISI ASLI KAMU) =====
+          // ===== Dashboard =====
           Scaffold(
-            backgroundColor: Colors.white,
             appBar: AppBar(
               backgroundColor: const Color(0xFF000D33),
               title: const Text('Dashboard Petugas'),
@@ -190,32 +64,25 @@ class _HomePetugasPageState extends State<HomePetugasPage> {
                     physics: const NeverScrollableScrollPhysics(),
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          mainAxisSpacing: 12,
-                          crossAxisSpacing: 12,
-                          childAspectRatio: 2.6,
-                        ),
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      childAspectRatio: 2.6,
+                    ),
                     children: const [
                       _SummaryCard(title: 'Menunggu', value: '3'),
                       _SummaryCard(title: 'Dipinjam', value: '5'),
                       _SummaryCard(title: 'Kembali Hari Ini', value: '2'),
-                      _SummaryCard(
-                        title: 'Terlambat',
-                        value: '1',
-                        isAlert: true,
-                      ),
+                      _SummaryCard(title: 'Terlambat', value: '1', isAlert: true),
                     ],
                   ),
-
                   const SizedBox(height: 24),
-
-                  // ===== QUICK ACTION =====
+                  // ===== card aksi cepat =====
                   const Text(
                     'Aksi Cepat',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   const SizedBox(height: 12),
-
                   Row(
                     children: [
                       _ActionButton(
@@ -239,16 +106,13 @@ class _HomePetugasPageState extends State<HomePetugasPage> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 24),
-
                   // ===== RECENT =====
                   const Text(
                     'Pengajuan Terbaru',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   const SizedBox(height: 12),
-
                   ...pengajuanTerbaru.map(
                     (item) => Card(
                       child: ListTile(
@@ -266,34 +130,27 @@ class _HomePetugasPageState extends State<HomePetugasPage> {
               ),
             ),
           ),
-
           // ===== MENU NAVBAR =====
           const HalamanPersetujuanPage(),
           const HalamanPengembalianPage(),
           SettingsPage(),
         ],
       ),
-
-      // ================= NAVBAR =================
+      // ===== NAVBAR =====
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
+        selectedItemColor: const Color(0xFF000D33),
+        unselectedItemColor: Colors.grey,
         onTap: (index) {
           setState(() {
             _selectedIndex = index;
           });
         },
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xFF000D33),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.assignment),
-            label: 'Persetujuan',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.assignment_return),
-            label: 'Pengembalian',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.assignment), label: 'Persetujuan'),
+          BottomNavigationBarItem(icon: Icon(Icons.assignment_return), label: 'Pengembalian'),
           BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Setting'),
         ],
       ),
@@ -301,8 +158,7 @@ class _HomePetugasPageState extends State<HomePetugasPage> {
   }
 }
 
-// ================= COMPONENT ASLI =================
-
+// ================= COMPONENTS =================
 class _SummaryCard extends StatelessWidget {
   final String title;
   final String value;

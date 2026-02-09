@@ -13,9 +13,9 @@ class KelolaKategoriPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF000D33),
-        title: const Text("Kelola Kategori"),
+        title: const Text("Kelola Kategori", style: TextStyle(color: Colors.white)),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: Color.fromARGB(255, 255, 255, 255)),
           onPressed: () => Navigator.pop(context),
         ),
       ),

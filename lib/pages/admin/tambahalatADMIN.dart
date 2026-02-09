@@ -17,12 +17,14 @@ class _TambahAlatPageState extends State<TambahAlatPage> {
   final _stokController = TextEditingController();
   String? _selectedStatus;
 
+//---vARIABEL UNTUK MENYIMPAN GAMBAR---
   File? _imageFile;
   Uint8List? _webImage;
   String? _fileName;
   bool _isLoading = false;
 
   final Color navyColor = const Color(0xFF000D33);
+
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
@@ -45,6 +47,7 @@ class _TambahAlatPageState extends State<TambahAlatPage> {
     }
   }
 
+//SIMPAN DATA KE SUPABASE
   Future<void> _simpanData() async {
     if (_nameController.text.isEmpty ||
         _stokController.text.isEmpty ||
@@ -63,6 +66,7 @@ class _TambahAlatPageState extends State<TambahAlatPage> {
     try {
       final supabase = Supabase.instance.client;
 
+//------------UPLOAD GAMBAR KE SUUPABASE-------
       final String fileExt = _fileName?.split('.').last ?? 'jpg';
       final String path =
           'alat_images/${DateTime.now().millisecondsSinceEpoch}.$fileExt';
@@ -133,7 +137,7 @@ class _TambahAlatPageState extends State<TambahAlatPage> {
       fontWeight: FontWeight.bold,
     );
 
-    const statusItems = ["Tersedia", "Dipinjam", "Perbaikan"];
+    final List<String> statusItems= ["Tersedia", "Tidak Tersedia"];
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
@@ -156,6 +160,8 @@ class _TambahAlatPageState extends State<TambahAlatPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+
+          //====UPLOAD GAMBAR----
                     GestureDetector(
                       onTap: _pickImage,
                       child: Container(
@@ -204,6 +210,7 @@ class _TambahAlatPageState extends State<TambahAlatPage> {
 
                     const SizedBox(height: 15),
 
+//------DROPDOWN STATUS---------
                     const Text("Status", style: labelStyle),
                     const SizedBox(height: 8),
                     Container(
@@ -224,7 +231,7 @@ class _TambahAlatPageState extends State<TambahAlatPage> {
                                 )
                                 .toList(),
                         onChanged:
-                            (val) => setState(() => _selectedStatus = val),
+                            (value) => setState(() => _selectedStatus = value),
                       ),
                     ),
 
@@ -243,6 +250,7 @@ class _TambahAlatPageState extends State<TambahAlatPage> {
 
                     const SizedBox(height: 30),
 
+///---------TOMBOL BATAL DAN TAMBAH--
                     Row(
                       children: [
                         Expanded(

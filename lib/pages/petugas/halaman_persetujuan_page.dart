@@ -49,11 +49,15 @@ class _HalamanPersetujuanPageState extends State<HalamanPersetujuanPage> {
   }
 
   // 🔹 update status peminjaman
-  Future<void> updateStatus(dynamic idPeminjaman, String statusBaru) async {
+  Future<void> updateStatus(int index, String statusBaru) async {
+     final id = peminjamanList[index]['id_peminjaman'];
+      setState(() {
+    peminjamanList[index]['status'] = statusBaru;
+  });
     await supabase
         .from('peminjaman')
         .update({'status': statusBaru})
-        .eq('id_peminjaman', idPeminjaman);
+        .eq('id_peminjaman', statusBaru);
 
     fetchPeminjaman();
   }
@@ -86,7 +90,7 @@ class _HalamanPersetujuanPageState extends State<HalamanPersetujuanPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Nama Peminjam: ${item['user']['nama_lengkap']}',
+                            'Nama Peminjam: ${item['users']['nama_lengkap']}',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 6),
@@ -97,33 +101,19 @@ class _HalamanPersetujuanPageState extends State<HalamanPersetujuanPage> {
                           ),
                           const SizedBox(height: 12),
 
-                          if (status == 'menunggu' && notReturned) ...[
+                         if (status == 'menunggu') ...[
                             Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
                                 ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.red,
-                                  ),
-                                  onPressed: () {
-                                    updateStatus(
-                                      item['id_peminjaman'],
-                                      'ditolak',
-                                    );
-                                  },
+                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                  onPressed: () => updateStatus(index, 'ditolak'),
                                   child: const Text('Tolak'),
                                 ),
                                 const SizedBox(width: 10),
                                 ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.green,
-                                  ),
-                                  onPressed: () {
-                                    updateStatus(
-                                      item['id_peminjaman'],
-                                      'disetujui',
-                                    );
-                                  },
+                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                                  onPressed: () => updateStatus(index, 'disetujui'),
                                   child: const Text('Setujui'),
                                 ),
                               ],
@@ -137,12 +127,10 @@ class _HalamanPersetujuanPageState extends State<HalamanPersetujuanPage> {
                                   style: const TextStyle(color: Colors.white),
                                 ),
                                 backgroundColor:
-                                    status == 'disetujui'
-                                        ? Colors.green
-                                        : Colors.red,
+                                    status == 'disetujui' ? Colors.green : Colors.red,
                               ),
                             ),
-                          ],
+                          ]
                         ],
                       ),
                     ),
