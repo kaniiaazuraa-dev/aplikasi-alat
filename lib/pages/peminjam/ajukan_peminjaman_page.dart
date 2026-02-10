@@ -1,7 +1,20 @@
+import 'package:aplikasi_alat/models/alat_models.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../models/alat.models.dart';
-import 'form_peminjaman_page.dart'; // ⬅️ TAMBAHKAN INI
+import '../../../models/alat_models.dart';
+
+final supabase = Supabase.instance.client;
+
+// MODEL KERANJANG
+class AlatPinjam {
+  final Alat alat;
+  int jumlah;
+
+  AlatPinjam({
+    required this.alat,
+    this.jumlah = 1,
+  });
+}
 
 class AjukanPeminjamanPage extends StatefulWidget {
   const AjukanPeminjamanPage({super.key});
@@ -11,9 +24,8 @@ class AjukanPeminjamanPage extends StatefulWidget {
 }
 
 class _AjukanPeminjamanPageState extends State<AjukanPeminjamanPage> {
-  final supabase = Supabase.instance.client;
-
-  List<AlatModel> listAlat = [];
+  List<Alat> listAlat = [];
+  List<AlatPinjam> keranjang = [];
   bool isLoading = true;
 
   @override
@@ -22,123 +34,145 @@ class _AjukanPeminjamanPageState extends State<AjukanPeminjamanPage> {
     fetchAlat();
   }
 
+  // ================= FETCH ALAT =================
   Future<void> fetchAlat() async {
     try {
       final response = await supabase
           .from('alat')
           .select()
-          .eq('status', 'Tersedia'); // ⬅️ alat yang bisa dipinjam
+          .order('nama_alat');
 
       setState(() {
-        listAlat =
-            (response as List).map((e) => AlatModel.fromJson(e)).toList();
+        listAlat = (response as List)
+            .map((e) => Alat.fromMap(e as Map<String, dynamic>))
+            .toList();
         isLoading = false;
       });
     } catch (e) {
-      isLoading = false;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Gagal memuat alat')));
+      debugPrint('Error fetch alat: $e');
+      setState(() => isLoading = false);
     }
   }
 
+  // ================= UI =================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF000D33),
-        title: const Text('Pilih Alat', style: TextStyle(color: Colors.white)),
-        leading: const BackButton(color: Colors.white),
-      ),
-      body:
-          isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : GridView.builder(
-                padding: const EdgeInsets.all(16),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 0.75,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                ),
-                itemCount: listAlat.length,
-                itemBuilder: (context, index) {
-                  final alat = listAlat[index];
-                  return _buildAlatCard(alat);
-                },
-              ),
+      appBar: AppBar(title: const Text('Ajukan Peminjaman')),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : ListView.builder(
+              padding: const EdgeInsets.all(12),
+              itemCount: listAlat.length,
+              itemBuilder: (context, index) {
+                final alat = listAlat[index];
+
+                final item = keranjang.firstWhere(
+                  (e) => e.alat.idAlat == alat.idAlat,
+                  orElse: () => AlatPinjam(alat: alat, jumlah: 0),
+                );
+
+                return _alatCard(alat, item);
+              },
+            ),
     );
   }
 
-  Widget _buildAlatCard(AlatModel alat) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: Colors.white,
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 5)],
-      ),
-      child: Column(
-        children: [
-          // ================= GAMBAR =================
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: alat.image_url != null && alat.image_url!.isNotEmpty
-                  ? Image.network(
-                      alat.image_url!,
-                      fit: BoxFit.contain,
-                    )
-                  : const Icon(Icons.image, size: 60),
-            ),
-          ),
+  // ================= CARD ALAT =================
+  Widget _alatCard(Alat alat, AlatPinjam item) {
+    final isSelected = item.jumlah > 0;
 
-          // ================= INFO ALAT =================
-          Container(
-            padding: const EdgeInsets.all(8),
-            width: double.infinity,
-            decoration: const BoxDecoration(
-              color: Color(0xFF000D33),
-              borderRadius: BorderRadius.vertical(
-                bottom: Radius.circular(12),
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            // INFO
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    alat.nama,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Status: ${alat.status}',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  Text(
+                    'Stok: ${alat.stok}',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
               ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+
+            // COUNTER
+            Row(
               children: [
-                Text(
-                  alat.namaAlat,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+                _countButton(
+                  icon: Icons.remove,
+                  onTap: () {
+                    if (item.jumlah > 0) {
+                      setState(() {
+                        item.jumlah--;
+                        if (item.jumlah == 0) {
+                          keranjang.removeWhere(
+                              (e) => e.alat.idAlat == alat.idAlat);
+                        }
+                      });
+                    }
+                  },
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(
+                    item.jumlah.toString(),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
-                Text(
-                  'Kategori: ${alat.kategori}',
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                ),
-                Text(
-                  'Stok: ${alat.stok}',
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                ),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: IconButton(
-                    icon: const Icon(Icons.add_circle, color: Colors.white),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              FormPeminjamanPage(alat: alat),
-                        ),
-                      );
-                    },
-                  ),
+                _countButton(
+                  icon: Icons.add,
+                  onTap: () {
+                    if (item.jumlah < alat.stok) {
+                      setState(() {
+                        if (!isSelected) {
+                          keranjang.add(AlatPinjam(alat: alat, jumlah: 1));
+                        } else {
+                          item.jumlah++;
+                        }
+                      });
+                    }
+                  },
                 ),
               ],
             ),
-          ),
-        ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ================= BUTTON =================
+  Widget _countButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Icon(icon, size: 16),
       ),
     );
   }

@@ -1,27 +1,21 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../models/user_models.dart';
 
-final supabase = Supabase.instance.client;
+class UserService {
+  final _client = Supabase.instance.client;
 
-Future<Map<String, dynamic>?> cekPeminjam(String emailPeminjam) async {
-  final response = await supabase
-      .from('users')
-      .select('id, email, role')
-      .eq('email', emailPeminjam)
-      .single();
+  Future<List<UserModel>> fetchUsers() async {
+    final data = await _client
+        .from('users')
+        .select('id, nama_lengkap, email, role')
+        .order('nama_lengkap');
 
-  if (response == null) {
-    print('Email tidak ditemukan');
-    return null;
+    return (data as List)
+        .map((e) => UserModel.fromMap(e))
+        .toList();
   }
 
-  final role = response['role'];
-  final idPeminjam = response['id'];
-
-  if (role != 'peminjam') {
-    print('Email ini bukan peminjam');
-    return null;
+  Future<void> deleteUser(String id) async {
+    await _client.from('users').delete().eq('id', id);
   }
-
-  print('Berhasil, id peminjam: $idPeminjam');
-  return {'id': idPeminjam, 'email': emailPeminjam, 'role': role};
 }

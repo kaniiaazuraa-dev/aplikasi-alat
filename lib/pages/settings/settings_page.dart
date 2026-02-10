@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../auth/login.dart';
-import '../admin/daftar_user_page.dart';
+import '../admin/user/daftar_user_page.dart';
 
 class SettingsPage extends StatelessWidget {
   SettingsPage({super.key});

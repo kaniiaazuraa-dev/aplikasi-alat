@@ -1,17 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../models/alat.models.dart';
+import '../../models/alat_pinjam_models.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// Model untuk keranjang
-class AlatPinjam {
-  final AlatModel alat;
-  int jumlah;
-
-  AlatPinjam({required this.alat, this.jumlah = 1});
-}
-
 class FormPeminjamanPage extends StatefulWidget {
-  final AlatModel? alat; // bisa null karena keranjang multi-alat
+  final AlatModel? alat;
 
   const FormPeminjamanPage({super.key, this.alat});
 
@@ -44,7 +36,6 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 30)),
     );
-
     if (date != null) {
       if (!isPinjam && tanggalPinjam != null && date.isBefore(tanggalPinjam!)) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -191,69 +182,7 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
     );
   }
 
-  // ================= CARD ALAT =================
-  Widget _alatCard(AlatPinjam item) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6, offset: const Offset(0, 3))],
-      ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: item.alat.image_url != null && item.alat.image_url!.isNotEmpty
-                ? Image.network(item.alat.image_url!, width: 60, height: 60, fit: BoxFit.cover)
-                : Image.asset('assets/images/alat_default.png', width: 60, height: 60, fit: BoxFit.cover),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(item.alat.namaAlat, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                const SizedBox(height: 4),
-                const Text('Status: Tersedia', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                const SizedBox(height: 2),
-                const Text('Kondisi: Baik', style: TextStyle(fontSize: 12, color: Colors.grey)),
-              ],
-            ),
-          ),
-          Row(
-            children: [
-              _countButton('-', onTap: () { if (item.jumlah > 1) setState(() => item.jumlah--); }),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                child: Text('${item.jumlah}', style: const TextStyle(fontWeight: FontWeight.bold)),
-              ),
-              _countButton('+', onTap: () => setState(() => item.jumlah++)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _countButton(String text, {required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 28,
-        height: 28,
-        decoration: BoxDecoration(
-          color: const Color(0xFFEFEFEF),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        alignment: Alignment.center,
-        child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
-      ),
-    );
-  }
-
-  // ================= CANCEL & SUBMIT =================
+  // ================= CANCEL BUTTON =================
   Widget _cancelButton() {
     return Container(
       height: 48,
@@ -267,6 +196,106 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
     );
   }
 
+  // ================= ALAT CARD =================
+  Widget _alatCard(AlatPinjam item) {
+  return Card(
+    margin: const EdgeInsets.symmetric(vertical: 8),
+    elevation: 2,
+    child: Padding(
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // INFO ALAT
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+  item.alat.nama,
+  style: TextStyle(
+    fontWeight: FontWeight.w700,
+    fontSize: 14,
+  ),
+),
+const SizedBox(height: 4),
+Text(
+  'Status: ${item.alat.status}',
+  style: TextStyle(
+    fontSize: 12,
+    color: Colors.grey,
+  ),
+),
+Text(
+  'Stok: ${item.alat.stok}',
+  style: TextStyle(
+    fontSize: 12,
+    color: Colors.grey,
+  ),
+),
+
+              ],
+            ),
+          ),
+
+          // COUNTER JUMLAH
+          Row(
+            children: [
+              _countButton(
+                icon: Icons.remove,
+                onTap: () {
+                  if (item.jumlah > 1) {
+                    setState(() {
+                      item.jumlah--;
+                    });
+                  }
+                },
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  item.jumlah.toString(),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              _countButton(
+                icon: Icons.add,
+                onTap: () {
+                  if (item.jumlah < item.alat.stok) {
+                    setState(() {
+                      item.jumlah++;
+                    });
+                  }
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+  Widget _countButton({
+  required IconData icon,
+  required VoidCallback onTap,
+}) {
+  return InkWell(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Icon(icon, size: 16),
+    ),
+  );
+}
+
+  // ================= SUBMIT BUTTON =================
   Widget _submitButton() {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
