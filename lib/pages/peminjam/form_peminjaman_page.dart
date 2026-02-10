@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import '../../models/alat_pinjam_models.dart';
+import '../../models/alat_pinjam_models.dart'; // pastikan path ini benar sesuai projectmu
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class FormPeminjamanPage extends StatefulWidget {
-  final AlatModel? alat;
+  final List<AlatPinjam> initialKeranjang;
 
-  const FormPeminjamanPage({super.key, this.alat});
+  const FormPeminjamanPage({super.key, required this.initialKeranjang});
 
   @override
   State<FormPeminjamanPage> createState() => _FormPeminjamanPageState();
@@ -18,15 +18,12 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
   final TextEditingController catatanC = TextEditingController();
   final TextEditingController namaC = TextEditingController();
 
-  // Keranjang multi-alat
-  List<AlatPinjam> keranjang = [];
+  late List<AlatPinjam> keranjang;
 
   @override
   void initState() {
     super.initState();
-    if (widget.alat != null) {
-      keranjang.add(AlatPinjam(alat: widget.alat!));
-    }
+    keranjang = List.from(widget.initialKeranjang);
   }
 
   Future<void> _pickDate(bool isPinjam) async {
@@ -34,31 +31,27 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
       context: context,
       initialDate: DateTime.now(),
       firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 30)),
+      lastDate: DateTime.now().add(const Duration(days: 90)),
     );
     if (date != null) {
-      if (!isPinjam && tanggalPinjam != null && date.isBefore(tanggalPinjam!)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tanggal kembali harus setelah tanggal pinjam')),
-        );
-        return;
-      }
       setState(() {
         if (isPinjam) {
           tanggalPinjam = date;
+          if (tanggalKembali != null && tanggalKembali!.isBefore(date)) {
+            tanggalKembali = null;
+          }
         } else {
+          if (tanggalPinjam != null && date.isBefore(tanggalPinjam!)) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Tanggal kembali harus setelah tanggal pinjam'),
+              ),
+            );
+            return;
+          }
           tanggalKembali = date;
         }
       });
-    }
-  }
-
-  void tambahKeKeranjang(AlatModel alat) {
-    final index = keranjang.indexWhere((e) => e.alat.idAlat == alat.idAlat);
-    if (index >= 0) {
-      setState(() => keranjang[index].jumlah++);
-    } else {
-      setState(() => keranjang.add(AlatPinjam(alat: alat)));
     }
   }
 
@@ -68,7 +61,10 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
       backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
         backgroundColor: const Color(0xFF0B1C3D),
-        title: const Text('Form Peminjaman', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Form Peminjaman',
+          style: TextStyle(color: Colors.white),
+        ),
         leading: const BackButton(color: Colors.white),
       ),
       body: SingleChildScrollView(
@@ -78,18 +74,42 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _inputField(controller: namaC, label: 'Nama Peminjam', hint: 'Masukkan Nama Peminjam'),
+              _inputField(
+                controller: namaC,
+                label: 'Nama Peminjam',
+                hint: 'Masukkan nama lengkap',
+              ),
               const SizedBox(height: 16),
-              _dateField(label: 'Tanggal Peminjaman', value: tanggalPinjam, onTap: () => _pickDate(true)),
+              _dateField(
+                label: 'Tanggal Peminjaman',
+                value: tanggalPinjam,
+                onTap: () => _pickDate(true),
+              ),
               const SizedBox(height: 16),
-              _dateField(label: 'Tanggal Pengembalian', value: tanggalKembali, onTap: () => _pickDate(false)),
-              const SizedBox(height: 20),
-              const Text('Keranjang Peminjaman', style: TextStyle(fontWeight: FontWeight.bold)),
+              _dateField(
+                label: 'Tanggal Pengembalian',
+                value: tanggalKembali,
+                onTap: () => _pickDate(false),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Alat yang Dipinjam',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
               const SizedBox(height: 8),
-              _addCartButton(),
-              const SizedBox(height: 10),
-              ...keranjang.map((item) => _alatCard(item)).toList(),
-              const SizedBox(height: 30),
+              if (keranjang.isEmpty)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text(
+                      'Belum ada alat yang dipilih',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ),
+                )
+              else
+                ...keranjang.map((item) => _alatCard(item)).toList(),
+              const SizedBox(height: 24),
               Row(
                 children: [
                   Expanded(child: _cancelButton()),
@@ -105,24 +125,43 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
   }
 
   // ================= INPUT FIELD =================
-  Widget _inputField({required TextEditingController controller, required String label, required String hint}) {
+  Widget _inputField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        ),
         const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(10),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))],
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: TextFormField(
             controller: controller,
             decoration: InputDecoration(
               hintText: hint,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 14,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide.none,
+              ),
             ),
           ),
         ),
@@ -131,11 +170,18 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
   }
 
   // ================= DATE FIELD =================
-  Widget _dateField({required String label, required DateTime? value, required VoidCallback onTap}) {
+  Widget _dateField({
+    required String label,
+    required DateTime? value,
+    required VoidCallback onTap,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        ),
         const SizedBox(height: 6),
         GestureDetector(
           onTap: onTap,
@@ -144,14 +190,24 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(10),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))],
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  value == null ? 'Masukkan $label' : '${value.day}-${value.month}-${value.year}',
-                  style: TextStyle(color: value == null ? Colors.grey.shade500 : Colors.black),
+                  value == null
+                      ? 'Masukkan $label'
+                      : '${value.day}-${value.month}-${value.year}',
+                  style: TextStyle(
+                    color: value == null ? Colors.grey.shade500 : Colors.black,
+                  ),
                 ),
                 const Icon(Icons.calendar_month, size: 20, color: Colors.grey),
               ],
@@ -162,23 +218,105 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
     );
   }
 
-  // ================= ADD CART BUTTON =================
-  Widget _addCartButton() {
-    return GestureDetector(
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Fitur pilih alat akan ditambahkan di sini')),
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0B1C3D),
-          borderRadius: BorderRadius.circular(12),
+  // ================= ALAT CARD DI KERANJANG =================
+  Widget _alatCard(AlatPinjam item) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            // Gambar kecil (opsional)
+            if (item.alat.imageUrl != null || item.alat.imageUrl != null)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  item.alat.imageUrl ?? item.alat.imageUrl ?? '',
+                  width: 60,
+                  height: 60,
+                  fit: BoxFit.cover,
+                  errorBuilder:
+                      (context, error, stackTrace) => const Icon(
+                        Icons.broken_image,
+                        size: 60,
+                        color: Colors.grey,
+                      ),
+                ),
+              ),
+            if (item.alat.imageUrl != null || item.alat.imageUrl != null)
+              const SizedBox(width: 12),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.alat.nama,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Kategori: ${item.alat.kategori ?? "-"}',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  Text(
+                    'Stok tersedia: ${item.alat.stok}',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+            Row(
+              children: [
+                _countButton(
+                  icon: Icons.remove_circle_outline,
+                  color: Colors.red,
+                  onTap:
+                      item.jumlah > 1
+                          ? () => setState(() => item.jumlah--)
+                          : () => setState(() {
+                            keranjang.remove(item);
+                          }),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    item.jumlah.toString(),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                _countButton(
+                  icon: Icons.add_circle_outline,
+                  color: Colors.green,
+                  onTap:
+                      item.jumlah < (item.alat.stok ?? 0)
+                          ? () => setState(() => item.jumlah++)
+                          : null,
+                ),
+              ],
+            ),
+          ],
         ),
-        alignment: Alignment.center,
-        child: const Text('+ Tambah Keranjang', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
+    );
+  }
+
+  Widget _countButton({
+    required IconData icon,
+    required Color color,
+    VoidCallback? onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Icon(icon, color: onTap != null ? color : Colors.grey, size: 28),
     );
   }
 
@@ -196,148 +334,91 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
     );
   }
 
-  // ================= ALAT CARD =================
-  Widget _alatCard(AlatPinjam item) {
-  return Card(
-    margin: const EdgeInsets.symmetric(vertical: 8),
-    elevation: 2,
-    child: Padding(
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // INFO ALAT
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-  item.alat.nama,
-  style: TextStyle(
-    fontWeight: FontWeight.w700,
-    fontSize: 14,
-  ),
-),
-const SizedBox(height: 4),
-Text(
-  'Status: ${item.alat.status}',
-  style: TextStyle(
-    fontSize: 12,
-    color: Colors.grey,
-  ),
-),
-Text(
-  'Stok: ${item.alat.stok}',
-  style: TextStyle(
-    fontSize: 12,
-    color: Colors.grey,
-  ),
-),
-
-              ],
-            ),
-          ),
-
-          // COUNTER JUMLAH
-          Row(
-            children: [
-              _countButton(
-                icon: Icons.remove,
-                onTap: () {
-                  if (item.jumlah > 1) {
-                    setState(() {
-                      item.jumlah--;
-                    });
-                  }
-                },
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  item.jumlah.toString(),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              _countButton(
-                icon: Icons.add,
-                onTap: () {
-                  if (item.jumlah < item.alat.stok) {
-                    setState(() {
-                      item.jumlah++;
-                    });
-                  }
-                },
-              ),
-            ],
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-  Widget _countButton({
-  required IconData icon,
-  required VoidCallback onTap,
-}) {
-  return InkWell(
-    onTap: onTap,
-    child: Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Icon(icon, size: 16),
-    ),
-  );
-}
-
   // ================= SUBMIT BUTTON =================
   Widget _submitButton() {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xFF0B1C3D),
-        minimumSize: const Size.fromHeight(48),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
-      onPressed: () async {
-        if (tanggalPinjam == null || tanggalKembali == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Isi tanggal pinjam dan kembali terlebih dahulu')),
-          );
-          return;
-        }
+      onPressed:
+          keranjang.isEmpty || tanggalPinjam == null || tanggalKembali == null
+              ? null
+              : () async {
+                if (namaC.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Nama peminjam wajib diisi')),
+                  );
+                  return;
+                }
 
-        final user = Supabase.instance.client.auth.currentUser;
-        if (user == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Silakan login terlebih dahulu')),
-          );
-          return;
-        }
+                final user = Supabase.instance.client.auth.currentUser;
+                if (user == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Silakan login terlebih dahulu'),
+                    ),
+                  );
+                  return;
+                }
 
-        try {
-          await Supabase.instance.client.from('peminjaman').insert({
-            'id_user': user.id,
-            'tanggal_pinjam': tanggalPinjam!.toIso8601String(),
-            'tanggal_kembali_rencana': tanggalKembali!.toIso8601String(),
-            'status': 'menunggu',
-          });
+                try {
+                  // Insert header peminjaman
+                  final peminjamanRes =
+                      await Supabase.instance.client
+                          .from('peminjaman')
+                          .insert({
+                            'id_user': user.id,
+                            'nama_peminjam': namaC.text.trim(),
+                            'tanggal_pinjam': tanggalPinjam!.toIso8601String(),
+                            'tanggal_kembali_rencana':
+                                tanggalKembali!.toIso8601String(),
+                            'status': 'menunggu',
+                            'catatan': catatanC.text.trim(),
+                          })
+                          .select('id')
+                          .single();
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Peminjaman berhasil diajukan!')),
-          );
+                  final peminjamanId = peminjamanRes['id'];
 
-          Navigator.pop(context);
-        } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Gagal mengajukan peminjaman: $e')),
-          );
-        }
-      },
-      child: const Text('Ajukan Peminjaman', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                  // Insert detail per alat
+                  final detailData =
+                      keranjang
+                          .map(
+                            (item) => {
+                              'id_peminjaman': peminjamanId,
+                              'id_alat': item.alat.idAlat,
+                              'jumlah': item.jumlah,
+                            },
+                          )
+                          .toList();
+
+                  await Supabase.instance.client
+                      .from('detail_peminjaman')
+                      .insert(detailData);
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Peminjaman berhasil diajukan!'),
+                    ),
+                  );
+
+                  Navigator.popUntil(context, (route) => route.isFirst);
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Gagal mengajukan: $e')),
+                  );
+                }
+              },
+      child: const Text(
+        'Ajukan Peminjaman',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     );
   }
 }

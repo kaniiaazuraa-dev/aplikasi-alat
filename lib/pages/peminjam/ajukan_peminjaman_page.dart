@@ -1,20 +1,12 @@
 import 'package:aplikasi_alat/models/alat_models.dart';
+import 'package:aplikasi_alat/models/alat_pinjam_models.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../models/alat_models.dart';
+
+// Import halaman form - sesuaikan path ini kalau masih error
+import '../peminjam/form_peminjaman_page.dart'; // ← ini path yang kamu pakai terakhir
 
 final supabase = Supabase.instance.client;
-
-// MODEL KERANJANG
-class AlatPinjam {
-  final Alat alat;
-  int jumlah;
-
-  AlatPinjam({
-    required this.alat,
-    this.jumlah = 1,
-  });
-}
 
 class AjukanPeminjamanPage extends StatefulWidget {
   const AjukanPeminjamanPage({super.key});
@@ -34,18 +26,14 @@ class _AjukanPeminjamanPageState extends State<AjukanPeminjamanPage> {
     fetchAlat();
   }
 
-  // ================= FETCH ALAT =================
   Future<void> fetchAlat() async {
     try {
-      final response = await supabase
-          .from('alat')
-          .select()
-          .order('nama_alat');
-
+      final response = await supabase.from('alat').select().order('nama_alat');
       setState(() {
-        listAlat = (response as List)
-            .map((e) => Alat.fromMap(e as Map<String, dynamic>))
-            .toList();
+        listAlat =
+            (response as List)
+                .map((e) => Alat.fromMap(e as Map<String, dynamic>))
+                .toList();
         isLoading = false;
       });
     } catch (e) {
@@ -54,125 +42,218 @@ class _AjukanPeminjamanPageState extends State<AjukanPeminjamanPage> {
     }
   }
 
-  // ================= UI =================
+  void _tambahKeKeranjang(Alat alat) {
+    setState(() {
+      final existingIndex = keranjang.indexWhere(
+        (e) => e.alat.idAlat == alat.idAlat,
+      );
+
+      if (existingIndex != -1) {
+        // Sudah ada di keranjang → tambah jumlah kalau stok masih cukup
+        final stokTersedia = alat.stok ?? 0;
+        if (keranjang[existingIndex].jumlah < stokTersedia) {
+          keranjang[existingIndex].jumlah++;
+        }
+      } else {
+        // Belum ada → tambah item baru kalau stok > 0
+        final stokTersedia = alat.stok ?? 0;
+        if (stokTersedia > 0) {
+          keranjang.add(AlatPinjam(alat: alat, jumlah: 1));
+        } else {
+          // Optional: beri tahu user kalau stok habis
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Stok alat ini habis')));
+        }
+      }
+    });
+
+    debugPrint('Keranjang sekarang: ${keranjang.length} item');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Ajukan Peminjaman')),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: listAlat.length,
-              itemBuilder: (context, index) {
-                final alat = listAlat[index];
+      appBar: AppBar(
+        title: const Text('Ajukan Peminjaman'),
+        backgroundColor: const Color(0xFF0D47A1),
+      ),
+      body:
+          isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : GridView.builder(
+                padding: const EdgeInsets.all(12),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  childAspectRatio: 0.68,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                ),
+                itemCount: listAlat.length,
+                itemBuilder: (context, index) {
+                  final alat = listAlat[index];
 
-                final item = keranjang.firstWhere(
-                  (e) => e.alat.idAlat == alat.idAlat,
-                  orElse: () => AlatPinjam(alat: alat, jumlah: 0),
-                );
+                  // Ini cara paling aman dan bersih
+                  final jumlah =
+                      keranjang.any((e) => e.alat.idAlat == alat.idAlat)
+                          ? keranjang
+                              .firstWhere((e) => e.alat.idAlat == alat.idAlat)
+                              .jumlah
+                          : 0;
 
-                return _alatCard(alat, item);
-              },
-            ),
+                  final stok = alat.stok ?? 0;
+
+                  return _buildAlatCard(alat, jumlah, stok);
+                },
+              ),
+      floatingActionButton:
+          keranjang.isNotEmpty
+              ? FloatingActionButton.extended(
+                onPressed: () {
+                  debugPrint('FAB diklik, keranjang: ${keranjang.length}');
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) =>
+                              FormPeminjamanPage(initialKeranjang: keranjang),
+                    ),
+                  );
+                },
+                label: Text('${keranjang.length}'),
+                icon: const Icon(Icons.arrow_forward),
+                backgroundColor: Colors.green,
+              )
+              : null,
     );
   }
 
-  // ================= CARD ALAT =================
-  Widget _alatCard(Alat alat, AlatPinjam item) {
-    final isSelected = item.jumlah > 0;
+  Widget _buildAlatCard(Alat alat, int jumlah, int stok) {
+    final gambarUrl = alat.imageUrl ?? 'https://via.placeholder.com/180';
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
+    return GestureDetector(
+      onTap: () {
+        debugPrint(
+          'Card ${alat.nama ?? "Tidak ada nama"} diklik | jumlah: $jumlah',
+        );
+
+        if (jumlah > 0) {
+          debugPrint('→ Langsung ke form peminjaman');
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder:
+                  (context) => FormPeminjamanPage(initialKeranjang: keranjang),
+            ),
+          );
+        } else if (stok > 0) {
+          debugPrint('→ Tambah ke keranjang');
+          _tambahKeKeranjang(alat);
+        } else {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Stok habis')));
+        }
+      },
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // INFO
             Expanded(
+              flex: 5,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.network(
+                    gambarUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder:
+                        (context, error, stackTrace) => Container(
+                          color: Colors.grey[300],
+                          child: const Icon(
+                            Icons.image_not_supported,
+                            size: 50,
+                          ),
+                        ),
+                  ),
+                  if (jumlah > 0)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '$jumlah',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Container(
+              color: const Color(0xFF0D47A1),
+              padding: const EdgeInsets.all(10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    alat.nama,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
+                    alat.nama ?? 'Nama Alat',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Status: ${alat.status}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                    'Kategori: ${alat.kategori ?? '-'}',
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                   Text(
-                    'Stok: ${alat.stok}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                    'Stok: $stok',
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                  const SizedBox(height: 6),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: InkWell(
+                      onTap: stok > 0 ? () => _tambahKeKeranjang(alat) : null,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.add,
+                          color: const Color(0xFF0D47A1),
+                          size: 24,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
-
-            // COUNTER
-            Row(
-              children: [
-                _countButton(
-                  icon: Icons.remove,
-                  onTap: () {
-                    if (item.jumlah > 0) {
-                      setState(() {
-                        item.jumlah--;
-                        if (item.jumlah == 0) {
-                          keranjang.removeWhere(
-                              (e) => e.alat.idAlat == alat.idAlat);
-                        }
-                      });
-                    }
-                  },
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Text(
-                    item.jumlah.toString(),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                _countButton(
-                  icon: Icons.add,
-                  onTap: () {
-                    if (item.jumlah < alat.stok) {
-                      setState(() {
-                        if (!isSelected) {
-                          keranjang.add(AlatPinjam(alat: alat, jumlah: 1));
-                        } else {
-                          item.jumlah++;
-                        }
-                      });
-                    }
-                  },
-                ),
-              ],
-            ),
           ],
         ),
-      ),
-    );
-  }
-
-  // ================= BUTTON =================
-  Widget _countButton({
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Icon(icon, size: 16),
       ),
     );
   }
