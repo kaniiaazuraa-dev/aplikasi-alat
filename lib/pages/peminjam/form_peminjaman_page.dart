@@ -228,12 +228,12 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            // Gambar kecil (opsional)
-            if (item.alat.imageUrl != null || item.alat.imageUrl != null)
+            // Gambar kecil (opsional) - tetap sama
+            if (item.alat.imageUrl != null)
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Image.network(
-                  item.alat.imageUrl ?? item.alat.imageUrl ?? '',
+                  item.alat.imageUrl ?? '',
                   width: 60,
                   height: 60,
                   fit: BoxFit.cover,
@@ -245,8 +245,7 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
                       ),
                 ),
               ),
-            if (item.alat.imageUrl != null || item.alat.imageUrl != null)
-              const SizedBox(width: 12),
+            if (item.alat.imageUrl != null) const SizedBox(width: 12),
 
             Expanded(
               child: Column(
@@ -364,25 +363,23 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
                 }
 
                 try {
-                  // Insert header peminjaman
+                  // Insert header peminjaman – field 'catatan' sudah dihapus
                   final peminjamanRes =
                       await Supabase.instance.client
                           .from('peminjaman')
                           .insert({
                             'id_user': user.id,
-                            'nama_peminjam': namaC.text.trim(),
                             'tanggal_pinjam': tanggalPinjam!.toIso8601String(),
                             'tanggal_kembali_rencana':
                                 tanggalKembali!.toIso8601String(),
                             'status': 'menunggu',
-                            'catatan': catatanC.text.trim(),
                           })
                           .select('id')
                           .single();
 
                   final peminjamanId = peminjamanRes['id'];
 
-                  // Insert detail per alat
+                  // Insert detail per alat – tetap sama
                   final detailData =
                       keranjang
                           .map(
