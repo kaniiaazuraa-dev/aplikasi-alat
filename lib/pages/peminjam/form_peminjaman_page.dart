@@ -27,7 +27,7 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
   }
 
   Future<void> _pickDate(bool isPinjam) async {
-    final date = await showDatePicker(
+    final date = await showDatePicker( //menampilkan pop up tanggaal
       context: context,
       initialDate: DateTime.now(),
       firstDate: DateTime.now(),
@@ -342,10 +342,10 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       onPressed:
-          keranjang.isEmpty || tanggalPinjam == null || tanggalKembali == null
+          keranjang.isEmpty || tanggalPinjam == null || tanggalKembali == null //tombol mati kalau beluum mengisi
               ? null
               : () async {
-                if (namaC.text.trim().isEmpty) {
+                if (namaC.text.trim().isEmpty) { //validasi kalau nama tidak diisi
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Nama peminjam wajib diisi')),
                   );
@@ -363,6 +363,25 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
                 }
 
                 try {
+                  
+  // ================= CEK PEMINJAMAN AKTIF =================
+                    final existing = await Supabase.instance.client
+                        .from('peminjaman')
+                        .select()
+                        .eq('id_user', user.id)
+                        .inFilter('status', ['menunggu', 'dipinjam']);
+
+                    if (existing.isNotEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Anda masih memiliki peminjaman yang belum selesai!',
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+
                   // Insert header peminjaman – field 'catatan' sudah dihapus
                   final peminjamanRes =
                       await Supabase.instance.client
@@ -374,10 +393,10 @@ class _FormPeminjamanPageState extends State<FormPeminjamanPage> {
                                 tanggalKembali!.toIso8601String(),
                             'status': 'menunggu',
                           })
-                          .select('id')
+                          .select('id_peminjaman')
                           .single();
 
-                  final peminjamanId = peminjamanRes['id'];
+                  final peminjamanId = peminjamanRes['id_peminjaman'];
 
                   // Insert detail per alat – tetap sama
                   final detailData =

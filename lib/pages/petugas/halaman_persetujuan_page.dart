@@ -30,7 +30,8 @@ class _HalamanPersetujuanPageState extends State<HalamanPersetujuanPage> {
       tanggal_pinjam,
       tanggal_kembali_rencana,
       status,
-      users!inner(nama_lengkap)
+      users(nama_lengkap),
+      alat(nama_alat)
     ''')
           .eq('status', 'menunggu') // 🔹 filter menunggu
           .order('tanggal_pinjam', ascending: false);
@@ -50,17 +51,21 @@ class _HalamanPersetujuanPageState extends State<HalamanPersetujuanPage> {
 
   // 🔹 update status peminjaman
   Future<void> updateStatus(int index, String statusBaru) async {
-     final id = peminjamanList[index]['id_peminjaman'];
-      setState(() {
-    peminjamanList[index]['status'] = statusBaru;
-  });
+  final id = peminjamanList[index]['id_peminjaman'];
+
+  try {
     await supabase
         .from('peminjaman')
         .update({'status': statusBaru})
-        .eq('id_peminjaman', statusBaru);
+        .eq('id_peminjaman', id);
 
     fetchPeminjaman();
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Gagal memperbarui status')),
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -92,6 +97,14 @@ class _HalamanPersetujuanPageState extends State<HalamanPersetujuanPage> {
                           Text(
                             'Nama Peminjam: ${item['users']['nama_lengkap']}',
                             style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 6),
+
+                          Text(
+                            'Alat Dipinjam: ${item['alat'] != null ? item ['alat']['nama_alat'] : '-'}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                           const SizedBox(height: 6),
                           Text('Tanggal Pinjam: ${item['tanggal_pinjam']}'),

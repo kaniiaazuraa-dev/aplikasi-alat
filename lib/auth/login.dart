@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -21,11 +22,12 @@ class _LoginPageState extends State<LoginPage> {
   bool isLoading = false;
   String errorMessage = '';
 
+  // 🔴 LOGIN EMAIL/PASSWORD
   Future<void> login() async {
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
 
-    // 🔴 VALIDASI INPUT
+    // VALIDASI INPUT
     if (email.isEmpty && password.isEmpty) {
       setState(() {
         errorMessage = 'Email dan password wajib diisi';
@@ -51,7 +53,7 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      // 🔐 LOGIN SUPABASE
+      // LOGIN SUPABASE
       await Supabase.instance.client.auth.signInWithPassword(
         email: email,
         password: password,
@@ -65,7 +67,7 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-      // 🔎 AMBIL ROLE
+      // AMBIL ROLE
       final data =
           await Supabase.instance.client
               .from('users')
@@ -77,7 +79,7 @@ class _LoginPageState extends State<LoginPage> {
 
       if (!mounted) return;
 
-      // 🚀 REDIRECT SESUAI ROLE
+      // REDIRECT SESUAI ROLE
       if (role == 'admin') {
         Navigator.pushReplacement(
           context,
@@ -129,6 +131,23 @@ class _LoginPageState extends State<LoginPage> {
       isLoading = false;
     });
   }
+
+ Future<void> loginWithGoogle() async {
+  try {
+    await Supabase.instance.client.auth.signInWithOAuth(
+      OAuthProvider.google,
+      redirectTo: kIsWeb
+    ? 'https://pevbxlldrzhelxrcdnar.supabase.co/auth/v1/callback'  // web
+    : 'io.supabase.sipas://login-callback/'                        // mobile
+
+    );
+  } catch (e) {
+    setState(() {
+      errorMessage = 'Login Google gagal';
+    });
+  }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -213,14 +232,45 @@ class _LoginPageState extends State<LoginPage> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child:
-                            isLoading
-                                ? const CircularProgressIndicator(
-                                  color: Colors.white,
-                                )
-                                : const Text('LOGIN'),
+                        child: isLoading
+                            ? const CircularProgressIndicator(
+                                color: Colors.white,
+                              )
+                            : const Text('LOGIN'),
                       ),
                     ),
+                    const SizedBox(height: 16),
+
+                    // CARD LOGIN GOOGLE
+                    InkWell(
+                      onTap: () async {
+                        await loginWithGoogle();
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.login, color: Colors.red),
+                            SizedBox(width: 10),
+                            Text(
+                              "Masuk dengan Google",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
                   ],
                 ),
               ),

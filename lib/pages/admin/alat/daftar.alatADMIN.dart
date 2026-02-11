@@ -4,6 +4,8 @@ import '../controllers/alat_controller.dart';
 import '../alat/editalatADMIN.dart';
 import '../../admin/alat/tambahalatADMIN.dart';
 import '../kategori/kelola_kategori_page.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 
 class DaftarAlatPage extends StatefulWidget {
   const DaftarAlatPage({super.key});
@@ -13,8 +15,24 @@ class DaftarAlatPage extends StatefulWidget {
 }
 
 class _DaftarAlatPageState extends State<DaftarAlatPage> {
-  final _alatController = AlatController();
   final _searchController = TextEditingController();
+  final AlatController alatController = AlatController();
+  final supabase = Supabase.instance.client;
+
+  void _listenRealtime() {
+  supabase
+      .channel('public:alat')
+      .onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'alat',
+        callback: (payload) async {
+          await alatController.getAlat();
+          setState(() {});
+        },
+      )
+      .subscribe();
+}
 
   String _kategoriTerpilih = 'Semua';
   String _searchQuery = '';
@@ -31,34 +49,37 @@ class _DaftarAlatPageState extends State<DaftarAlatPage> {
   @override
   void initState() {
     super.initState();
-    _alatController.getAlat();
-    _alatController.addListener(_refresh);
+    // ✅ AMBIL DATA ALAT SAAT HALAMAN DIBUKA
+  alatController.getAlat().then((_) {
+    setState(() {}); // refresh UI
+  });
+
+  _listenRealtime();
+
     _searchController.addListener(() {
       setState(() => _searchQuery = _searchController.text);
     });
   }
 
-  void _refresh() => setState(() {});
-
   @override
   void dispose() {
     _searchController.dispose();
-    _alatController.removeListener(_refresh);
-    _alatController.dispose();
+     supabase.removeAllChannels();
     super.dispose();
   }
 
-  List<Alat> get _filteredAlat =>
-      _alatController.daftarAlat.where((a) {
-        final matchKategori =
-            _kategoriTerpilih == 'Semua' || a.kategori == _kategoriTerpilih;
-        final matchSearch =
-            a.nama.toLowerCase().contains(_searchQuery.toLowerCase());
-        return matchKategori && matchSearch;
-      }).toList();
-
   @override
   Widget build(BuildContext context) {
+    List<Alat> filteredAlat = alatController.daftarAlat.isEmpty
+    ? []
+    :alatController.daftarAlat.where((a) {
+      final matchKategori =
+          _kategoriTerpilih == 'Semua' || a.kategori == _kategoriTerpilih;
+      final matchSearch =
+          a.nama.toLowerCase().contains(_searchQuery.toLowerCase());
+      return matchKategori && matchSearch;
+    }).toList();
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: navy,
@@ -100,7 +121,7 @@ class _DaftarAlatPageState extends State<DaftarAlatPage> {
                             builder: (_) => const KelolaKategoriPage(),
                           ),
                         );
-                        await _alatController.getAlat();
+                        await alatController.getAlat();
                       } else if (sel) {
                         setState(() => _kategoriTerpilih = kategori);
                       }
@@ -128,7 +149,29 @@ class _DaftarAlatPageState extends State<DaftarAlatPage> {
             ),
           ),
 
-          Expanded(child: _buildBody()),
+          Expanded(
+            child: alatController.loading
+                ? const Center(child: CircularProgressIndicator())
+                : filteredAlat.isEmpty
+                    ? const Center(child: Text('Tidak ditemukan alat'))
+                    : GridView.builder(
+                        padding: const EdgeInsets.all(12),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: 0.72,
+                        ),
+                        itemCount: filteredAlat.length,
+                        itemBuilder: (context, index) {
+                          return _AlatCard(
+                            alat: filteredAlat[index],
+                            controller: alatController,
+                          );
+                        },
+                      ),
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -140,34 +183,10 @@ class _DaftarAlatPageState extends State<DaftarAlatPage> {
             MaterialPageRoute(builder: (_) => const TambahAlatPage()),
           );
           if (added == true) {
-            await _alatController.getAlat();
+            await alatController.getAlat();
           }
         },
       ),
-    );
-  }
-
-  Widget _buildBody() {
-    if (_alatController.loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_filteredAlat.isEmpty) {
-      return const Center(child: Text('Tidak ditemukan alat'));
-    }
-
-    return GridView.builder(
-      padding: const EdgeInsets.all(12),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 0.72,
-      ),
-      itemCount: _filteredAlat.length,
-      itemBuilder: (context, index) {
-        final alat = _filteredAlat[index];
-        return _AlatCard(alat: alat, controller: _alatController);
-      },
     );
   }
 }
@@ -176,12 +195,12 @@ class _AlatCard extends StatelessWidget {
   final Alat alat;
   final AlatController controller;
 
-  const _AlatCard({required this.alat, required this.controller});
+  const _AlatCard({
+    required this.alat,
+    required this.controller,
+  });
 
   final Color navy = const Color(0xFF000D33);
-
-  Color _statusColor(String status) =>
-      status == 'Tersedia' ? Colors.greenAccent : Colors.grey;
 
   @override
   Widget build(BuildContext context) {
@@ -195,14 +214,12 @@ class _AlatCard extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ✅ FIX UTAMA DI SINI
               SizedBox(
                 height: 120,
                 width: double.infinity,
                 child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(14),
-                  ),
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(14)),
                   child: Image.network(
                     alat.imageUrl,
                     fit: BoxFit.cover,
@@ -214,7 +231,6 @@ class _AlatCard extends StatelessWidget {
                   ),
                 ),
               ),
-
               Padding(
                 padding: const EdgeInsets.all(10),
                 child: Column(
@@ -229,20 +245,13 @@ class _AlatCard extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 4),
                     Text(
                       'Status : ${alat.status}',
-                      style: TextStyle(
-                        color: _statusColor(alat.status),
-                        fontSize: 13,
-                      ),
+                      style: const TextStyle(color: Colors.white70),
                     ),
                     Text(
                       'Stok : ${alat.stok}',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 13,
-                      ),
+                      style: const TextStyle(color: Colors.white70),
                     ),
                   ],
                 ),
@@ -250,13 +259,15 @@ class _AlatCard extends StatelessWidget {
             ],
           ),
 
+          // ✅ TOMBOL EDIT & DELETE (POSISI TETAP)
           Positioned(
             bottom: 8,
             right: 8,
             child: Row(
               children: [
                 IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.white, size: 18),
+                  icon:
+                      const Icon(Icons.edit, color: Colors.white, size: 18),
                   onPressed: () async {
                     final updated = await Navigator.push(
                       context,
@@ -276,7 +287,8 @@ class _AlatCard extends StatelessWidget {
                   },
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.white, size: 18),
+                  icon: const Icon(Icons.delete,
+                      color: Colors.white, size: 18),
                   onPressed: () => _confirmDelete(context),
                 ),
               ],
@@ -287,6 +299,7 @@ class _AlatCard extends StatelessWidget {
     );
   }
 
+  // ✅ HARUS DI DALAM CLASS
   Future<void> _confirmDelete(BuildContext context) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -300,7 +313,10 @@ class _AlatCard extends StatelessWidget {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+            child: const Text(
+              'Hapus',
+              style: TextStyle(color: Colors.red),
+            ),
           ),
         ],
       ),

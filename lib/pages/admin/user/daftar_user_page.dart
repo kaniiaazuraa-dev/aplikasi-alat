@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../controllers/user_controller.dart';
 import '../../../services/user_service.dart';
 import 'widgets/user_card.dart';
@@ -16,13 +16,32 @@ class DaftarUserPage extends StatefulWidget {
 
 class _DaftarUserPageState extends State<DaftarUserPage> {
   late final UserController controller;
+  late RealtimeChannel userChannel;
+  final supabase = Supabase.instance.client;  //wadah untuk jalur ke realtime
 
   @override
   void initState() {
     super.initState();
     controller = UserController(UserService());
-    controller.loadUsers();
+    controller.loadUsers();  
+    listenUserRealtime();
   }
+
+  void listenUserRealtime() {
+  userChannel = supabase
+      .channel('public:users')
+      .onPostgresChanges(
+        event: PostgresChangeEvent.all, //perubahan untuk semua (insert, update, delete, create)
+        schema: 'public',
+        table: 'users',
+        callback: (payload) async {
+          print('Realtime event: ${payload.eventType}');
+          await controller.loadUsers();
+        },
+      )
+      .subscribe();
+}
+
 
   void _confirmDelete(UserModel user) {
     showDialog(
@@ -65,6 +84,7 @@ class _DaftarUserPageState extends State<DaftarUserPage> {
         title: const Text('User', style: TextStyle(color: Colors.white)),
       ),
 
+
       // ➕ FAB
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF020B4F),
@@ -76,7 +96,6 @@ class _DaftarUserPageState extends State<DaftarUserPage> {
               builder: (_) => const TambahUserPage(),
             ),
           );
-
           if (result == true) {
             controller.loadUsers();
           }
@@ -89,16 +108,13 @@ class _DaftarUserPageState extends State<DaftarUserPage> {
           if (controller.loading) {
             return const Center(child: CircularProgressIndicator());
           }
-
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: controller.users.length,
             itemBuilder: (_, i) {
               final user = controller.users[i];
-
               return UserCard(
                 user: user,
-
                 // ✏️ EDIT
                 onEdit: () async {
                   final result = await Navigator.push(
@@ -112,21 +128,25 @@ class _DaftarUserPageState extends State<DaftarUserPage> {
                       ),
                     ),
                   );
-
                   if (result == true) {
                     controller.loadUsers();
                   }
                 },
-
                 // 🗑️ DELETE (pakai dialog)
                 onDelete: () {
                   _confirmDelete(user);
                 },
+                
               );
             },
           );
         },
       ),
     );
+  }
+  @override
+  void dispose() {
+    supabase.removeChannel(userChannel);
+    super.dispose(); //saat keluar halaman realtime dihentikan
   }
 }
